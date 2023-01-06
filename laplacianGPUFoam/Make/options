@@ -1,0 +1,12 @@
+EXE_INC = \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude
+
+EXE_LIBS = \
+    -lfiniteVolume \
+    -lfvOptions \
+    -lmeshTools \
+    -L/usr/local/cuda/lib64 \
+    -lcuda \
+    -lcudart \
+     kernel0.o
