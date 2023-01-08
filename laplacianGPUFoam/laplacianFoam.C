@@ -58,9 +58,8 @@ Description
 #include "fvOptions.H"
 #include "simpleControl.H"
 #include "kernel0.h"
-#include "/usr/local/cuda/targets/x86_64-linux/include/cuda_runtime.h"
-#include "/usr/local/cuda/targets/x86_64-linux/include/cuda.h"
-
+#include <cuda_runtime_api.h>
+#include <cuda.h>
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main(int argc, char *argv[])
@@ -77,14 +76,10 @@ int main(int argc, char *argv[])
     #include "createTime.H"
     #include "createMesh.H"
 
-        //Added code
+    //Add clocks to profile
     #include "StopWatch.H"
     StopWatch DiscTime;
     StopWatch kernel1;
-    // StopWatch kernel2;
-    // StopWatch kernel3;
-
-
 
     simpleControl simple(mesh);
 
@@ -92,119 +87,8 @@ int main(int argc, char *argv[])
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-    /////////////////////////////////////////////////////////////// GPU Initialization/////////////////////////////////////////////////////
-    // mesh data add MJD
-    label nCells = mesh.cells().size();
-    label nIFaces = mesh.faceNeighbour().size();
-    label nPatches = mesh.boundaryMesh().size();
-    Info<<"Total number of cells in mesh:  "<<nCells<< ", number of internal faces: "<<nIFaces<<", and number of patches: "<<nPatches<<endl;
-   
-    //Boundary parameters
-    const polyBoundaryMesh& patches = mesh.boundaryMesh();
-    int numberOfPatches=(int)mesh.boundaryMesh().size();
-    int counter=0;
-    
-    int *patchCounter=(int*)malloc(numberOfPatches*sizeof(int));
-    
-    forAll(patches, patchI)
-    {
-        int pC_size= patches[patchI].faceCells().size();
-        int i=(int)patchI;
-        counter+=pC_size;
-        patchCounter[i]=counter;
-    }
-
-    double *pDiag=(double*)malloc(counter*sizeof(double));
-    double *pSource=(double*)malloc(counter*sizeof(double));
-    int *pC_Array=(int*)malloc(counter*sizeof(double));
-    int cj=0;
-    surfaceScalarField gammaMagSf = -fvc::interpolate(DT) * mesh.magSf();
-
-    forAll(patches, patchI)
-    {
-        fvPatchScalarField pTf = T.boundaryField()[patchI];
-        scalarField patchT_d = T.boundaryField()[patchI].gradientInternalCoeffs();
-        scalarField patchT_s = T.boundaryField()[patchI].gradientBoundaryCoeffs();
-        
-        forAll( pTf,j)
-        {
-            pC_Array[cj]= (int)(patches[patchI].faceCells()[j]);
-            fvsPatchScalarField pGamma = gammaMagSf.boundaryField()[patchI];        
-            pDiag[cj] = (double)(pGamma[j]*patchT_d[j]);
-            pSource[cj] = (double)(-pGamma[j]*patchT_s[j]);
-            cj++;
-        }
-    }
-
-
-    // Input arrays
-    //CPU inputs
-    double *cV_C=(double*)malloc(nCells*sizeof(double));           
-    double *Tot_C=(double*)malloc(nCells*sizeof(double));           
-    
-    double *deltaC_C=(double*)malloc(nIFaces*sizeof(double));           
-    double *sf_C=(double*)malloc(nIFaces*sizeof(double));
-    double *gammaMSF_C=(double*)malloc(nIFaces*sizeof(double));
-    int *lAddr_C=(int*)malloc(nIFaces*sizeof(int));
-    int *uAddr_C=(int*)malloc(nIFaces*sizeof(int));
-
-    //GPU output arrays
-    double *diag_G = (double*)malloc(nCells*sizeof(double));
-    double *source_G = (double*)malloc(nCells*sizeof(double));
-    double *lower_G = (double*)malloc(nIFaces*sizeof(double));
-    double *upper_G = (double*)malloc(nIFaces*sizeof(double));
-    
-    //GPU memory pointer
-    double *cV_G,*Tot_G; 
-    double *deltaC_G, *sf_G, *gammaMSF_G;
-    int *lAddr_G, *uAddr_G; 
-    
-    //GPU memory pointer for boundary
-    int *pC_Array_G, *patchCounter_G; 
-    double *pDiag_G, *pSource_G;
-
-    //GPU memory allocation
-    cudaMalloc(&Tot_G, nCells*sizeof(double));
-    cudaMalloc(&cV_G, nCells*sizeof(double));
-    cudaMalloc(&sf_G, nIFaces*sizeof(double));
-
-    cudaMalloc(&deltaC_G, nIFaces*sizeof(double));           
-    cudaMalloc(&gammaMSF_G, nIFaces*sizeof(double));
-    cudaMalloc(&lAddr_G, nIFaces*sizeof(int));
-    cudaMalloc(&uAddr_G, nIFaces*sizeof(int));
-
-    cudaMalloc(&pC_Array_G, counter*sizeof(int));
-    cudaMalloc(&patchCounter_G, numberOfPatches*sizeof(int));
-    cudaMalloc(&pDiag_G, counter*sizeof(double));
-    cudaMalloc(&pSource_G, counter*sizeof(double));
-    
-    //Copy to get double format
-    for (int i=0; i<nCells; i++)
-    {
-        cV_C[i] = (double)(mesh.V()[i]);
-    }
-
-    for (int i=0; i<nIFaces; i++)
-    {
-        deltaC_C[i] = (double)(mesh.deltaCoeffs()[i]);
-        sf_C[i]     = (double)(mesh.magSf()[i]);
-        lAddr_C[i]  = (int)(mesh.owner()[i]);
-        uAddr_C[i]  = (int)(mesh.neighbour()[i]);
-    }
-    
-    //CPU to GPU memory copy
-    cudaMemcpy(cV_G, cV_C, nCells*sizeof(double),cudaMemcpyHostToDevice);
-    cudaMemcpy(deltaC_G, deltaC_C, nIFaces*sizeof(double),cudaMemcpyHostToDevice);
-    cudaMemcpy(sf_G, sf_C, nIFaces*sizeof(double),cudaMemcpyHostToDevice);
-    cudaMemcpy(lAddr_G, lAddr_C, nIFaces*sizeof(int),cudaMemcpyHostToDevice);
-    cudaMemcpy(uAddr_G, uAddr_C, nIFaces*sizeof(int),cudaMemcpyHostToDevice);
-
-    cudaMemcpy(pC_Array_G, pC_Array, counter*sizeof(int),cudaMemcpyHostToDevice);
-    cudaMemcpy(pDiag_G, pDiag, counter*sizeof(double),cudaMemcpyHostToDevice);
-    cudaMemcpy(pSource_G, pSource, counter*sizeof(double),cudaMemcpyHostToDevice);
-
-    cudaMemcpy(patchCounter_G, patchCounter, numberOfPatches*sizeof(int),cudaMemcpyHostToDevice);
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /////// GPU Initialization /////////
+    #include "createGPUFields.H"
 
     Info<< "\nCalculating temperature distribution\n" << endl;
     
@@ -214,7 +98,7 @@ int main(int argc, char *argv[])
                
         while (simple.correctNonOrthogonal())
         {
-            DiscTime.start();
+            DiscTime.start(); // OF discretization on CPU
             fvScalarMatrix TEqn
             (
                 fvm::ddt(T) 
@@ -223,36 +107,29 @@ int main(int argc, char *argv[])
                 fvOptions(T)
             );
             DiscTime.stop();
-
-
-            fvScalarMatrix TEqn_d = TEqn;
-            scalar rDeltaT = 1.0/mesh.time().deltaTValue();
-            double rDelgaG= (double)rDeltaT;
-            TEqn_d.diag() = rDeltaT*mesh.Vsc();
-            TEqn_d.source() = rDeltaT*T.oldTime().primitiveField()*mesh.Vsc();
+          
             
+            scalar rDeltaT = 1.0/mesh.time().deltaTValue();
+            double rDelgaG= static_cast<double>(rDeltaT);
             surfaceScalarField sf_DT = -fvc::interpolate(DT);
             surfaceScalarField gammaMagSf_ = sf_DT * mesh.magSf();
-            TEqn_d.upper() = mesh.deltaCoeffs().primitiveField()*gammaMagSf_.primitiveField();
-            TEqn_d.negSumDiag();
             
-            // Update T_oldTime() and copy to GPU
-            for (int i=0; i<nCells; i++)
-            {
-                Tot_C[i]=(double)(T.oldTime().primitiveField()[i]);
-            }
+            // Update Told to device
+            const scalarList* ToldPtr = &T.oldTime().primitiveField();
+            scalarList* Toldlist = const_cast<scalarList*>(ToldPtr);
+            Tot_C = &Toldlist->first();
             cudaMemcpy(Tot_G, Tot_C, nCells*sizeof(double),cudaMemcpyHostToDevice);
 
-            // Update gammaMSF()             
-            for (int i=0; i<nIFaces; i++)
-            {
-                gammaMSF_C[i] = (double)(gammaMagSf_[i]);
-            }
+            // Update gammaMSF() to device
+            const scalarList* gMgaSfPtr = &gammaMagSf_;
+            scalarList* TgMagSflist = const_cast<scalarList*>(gMgaSfPtr);
+            gammaMSF_C = &TgMagSflist->first();
             cudaMemcpy(gammaMSF_G, gammaMSF_C, nIFaces*sizeof(double),cudaMemcpyHostToDevice);
 
 
-            kernel1.start();
+            
             // Execute GPU Kernel 
+            kernel1.start();
             laplasKernel( nCells,
                         nIFaces,
                         cV_G,
@@ -277,11 +154,11 @@ int main(int argc, char *argv[])
             kernel1.stop();
 
             
-            for(label i=0; i<TEqn.upper().size(); i++) 
+            for(label i=0; i<TEqn.diag().size(); i++) 
             {
-                scalar error = TEqn.upper()[i] - TEqn_d.upper()[i];
+                scalar error = TEqn.diag()[i] - diag_G[i];
                 if(error != 0)
-                Info << "face ="<<i<<" error ="<<error<<",  ref TEqn ="<<TEqn.upper()[i]<< "  and TEqn_d ="<<TEqn_d.upper()[i]<<endl; 
+                Info << "face ="<<i<<" error ="<<error<<",  ref TEqn ="<<TEqn.diag()[i]<< "  and TEqn_d ="<<diag_G[i]<<endl; 
             }
 
             Info<<"  Total number of cells in mesh: " <<endl;

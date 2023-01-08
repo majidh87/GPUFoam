@@ -132,10 +132,10 @@ void laplasKernel( int sizeDiag,
                                         );
 
     // Copy array back to host
-    // cudaMemcpy( h_diag, d_diag, sizeDiag*sizeof(double), cudaMemcpyDeviceToHost);
-    // cudaMemcpy( h_source, d_source, sizeDiag*sizeof(double), cudaMemcpyDeviceToHost);
-    // cudaMemcpy( h_lower, d_lower, sizeFace*sizeof(double), cudaMemcpyDeviceToHost);
-    // cudaMemcpy( h_upper, d_upper, sizeFace*sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy( h_diag, d_diag, sizeDiag*sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy( h_source, d_source, sizeDiag*sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy( h_lower, d_lower, sizeFace*sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy( h_upper, d_upper, sizeFace*sizeof(double), cudaMemcpyDeviceToHost);
 
     // Release device memory
     cudaFree(d_diag);
