@@ -1,3 +1,7 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
 void laplasKernel( int sizeDiag,
                 int sizeFace,
                 double *vcs, 
@@ -6,15 +10,17 @@ void laplasKernel( int sizeDiag,
                 double *gamma,
                 int *upperAddr,
                 int *lowerAddr,
-                int *patchCounter,
-                int *pC_Array,
-                double *pDiag,
-                double *pSource,
+                int numOfPatches,
                 int maxPatches,
-                int numberOfPatches,
+                int *d_pSize,
+                int **d_pAdrr,
+                double **d_pf_BC,
+                double **d_pf_IC,
+                double **d_pf_GammaSf,
                 double rDelgaG,
                 double *h_diag,
                 double *h_source,
                 double *h_upper,
                 double *h_lower
                 );
+

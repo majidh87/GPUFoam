@@ -57,9 +57,11 @@ Description
 #include "fvCFD.H"
 #include "fvOptions.H"
 #include "simpleControl.H"
-#include "kernel0.h"
+#include "discretizationKernel.h"
 #include <cuda_runtime_api.h>
 #include <cuda.h>
+#include "gpuFields.H"
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main(int argc, char *argv[])
@@ -79,7 +81,11 @@ int main(int argc, char *argv[])
     //Add clocks to profile
     #include "StopWatch.H"
     StopWatch DiscTime;
-    StopWatch kernel1;
+    StopWatch solveTime;
+    StopWatch kernel_Disc;
+    StopWatch kernel_ldu2csr;
+    StopWatch kernel_amgx;
+    StopWatch kernel_amgx_solve;
 
     simpleControl simple(mesh);
 
@@ -88,8 +94,11 @@ int main(int argc, char *argv[])
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
     /////// GPU Initialization /////////
-    #include "createGPUFields.H"
-
+    
+    gpuFields g;
+    g.init(mesh);
+    g.handle(mesh,DT,T);
+    
     Info<< "\nCalculating temperature distribution\n" << endl;
     
     while (simple.loop())
@@ -107,65 +116,32 @@ int main(int argc, char *argv[])
                 fvOptions(T)
             );
             DiscTime.stop();
-          
-            
-            scalar rDeltaT = 1.0/mesh.time().deltaTValue();
-            double rDelgaG= static_cast<double>(rDeltaT);
-            surfaceScalarField sf_DT = -fvc::interpolate(DT);
-            surfaceScalarField gammaMagSf_ = sf_DT * mesh.magSf();
-            
-            // Update Told to device
-            const scalarList* ToldPtr = &T.oldTime().primitiveField();
-            scalarList* Toldlist = const_cast<scalarList*>(ToldPtr);
-            Tot_C = &Toldlist->first();
-            cudaMemcpy(Tot_G, Tot_C, nCells*sizeof(double),cudaMemcpyHostToDevice);
 
-            // Update gammaMSF() to device
-            const scalarList* gMgaSfPtr = &gammaMagSf_;
-            scalarList* TgMagSflist = const_cast<scalarList*>(gMgaSfPtr);
-            gammaMSF_C = &TgMagSflist->first();
-            cudaMemcpy(gammaMSF_G, gammaMSF_C, nIFaces*sizeof(double),cudaMemcpyHostToDevice);
-
-
-            
-            // Execute GPU Kernel 
-            kernel1.start();
-            laplasKernel( nCells,
-                        nIFaces,
-                        cV_G,
-                        Tot_G,
-                        deltaC_G,
-                        gammaMSF_G,
-                        uAddr_G,
-                        lAddr_G,
-                        patchCounter_G,
-                        pC_Array_G,
-                        pDiag_G,
-                        pSource_G,
-                        counter,
-                        numberOfPatches,
-                        rDelgaG,
-                        diag_G,
-                        source_G,
-                        upper_G,
-                        lower_G
+            g.update(mesh,DT,T);
+            laplasKernel(g.nCells,
+                        g.nIFaces,
+                        g.d_cV,
+                        g.d_Tot,
+                        g.d_deltaC,
+                        g.d_gammaMSF,
+                        g.d_uAddr,
+                        g.d_lAddr,
+                        g.numberOfPatches,
+                        g.maxPatches,
+                        g.d_pSize,
+                        g.d_pAdrr,
+                        g.d_pf_BC,
+                        g.d_pf_IC,
+                        g.d_pf_GammaSf,
+                        g.rDelgaG,
+                        g.d_diag,
+                        g.d_source,
+                        g.d_upper,
+                        g.d_lower
                         );
-            
-            kernel1.stop();
-
-            
-            for(label i=0; i<TEqn.diag().size(); i++) 
-            {
-                scalar error = TEqn.diag()[i] - diag_G[i];
-                if(error != 0)
-                Info << "face ="<<i<<" error ="<<error<<",  ref TEqn ="<<TEqn.diag()[i]<< "  and TEqn_d ="<<diag_G[i]<<endl; 
-            }
 
             Info<<"  Total number of cells in mesh: " <<endl;
 
-            fvOptions.constrain(TEqn);
-            TEqn.solve();
-            fvOptions.correct(T);
         }
 
         #include "write.H"
@@ -173,14 +149,7 @@ int main(int argc, char *argv[])
         runTime.printExecutionTime(Info);
     }
 
-     Info<<"Time Profile: "
-        <<"\n\tDiscretization total time (TEqn) (s): " << DiscTime.getTotalTime()
-        <<"\n\t\tKernel total time (s): " << kernel1.getTotalTime()<<endl;
-
     Info<< "End\n" << endl;
 
     return 0;
 }
-
-
-// ************************************************************************* //
