@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
             g.update(mesh,DT,T);
             
             g.discKernel();
-
+            
             g.ldu2csr ();
 
             Info<<"  Total number of cells in mesh: " <<endl;

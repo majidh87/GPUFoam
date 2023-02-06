@@ -85,7 +85,6 @@ class gpuFields {
 
     void init(fvMesh& mesh)
     {
-        reset();
         const polyBoundaryMesh& patches = mesh.boundaryMesh();
     
         nCells          = static_cast<int>(mesh.cells().size());
