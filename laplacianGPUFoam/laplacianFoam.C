@@ -57,6 +57,7 @@ Description
 #include "fvCFD.H"
 #include "fvOptions.H"
 #include "simpleControl.H"
+#include "error.H"
 #include "discretizationKernel.h"
 #include "ldu2csr.h"
 #include <cuda_runtime_api.h>

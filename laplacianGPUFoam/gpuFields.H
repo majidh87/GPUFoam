@@ -2,8 +2,6 @@
 #include "fvOptions.H"
 #include "simpleControl.H"
 
-
-
 #define checkCudaErrors(call)                                       \
     do {                                                            \
         cudaError_t err = call;                                     \
@@ -16,8 +14,8 @@
 
 #define _CUDA(x) checkCudaErrors(x)
 
+class gpuFields { 
 
-class gpuFields {       
   public:    
     int nCells; 
     int nIFaces;
@@ -26,13 +24,13 @@ class gpuFields {
 
     int maxPatches;
     int numberOfPatches;
+
     int *h_pSize;
     int **h_pAdrr;
     double **h_pf_BC;
     double **h_pf_IC;
     double **h_pf_GammaSf;
         
-
     int* d_pSize;
     int ** d_pAdrr;
     int ** dInh_pAdrr;
@@ -42,7 +40,6 @@ class gpuFields {
     double **dInh_pf_IC;
     double **d_pf_GammaSf;
     double **dInh_pf_GammaSf;
-
 
     double *h_cV; ;          
     double *h_Tot;            
@@ -73,8 +70,6 @@ class gpuFields {
 
     bool initDone;
 
-
-    //Constructor:
     gpuFields():
     nCells(0),
     nIFaces(0),
@@ -90,6 +85,7 @@ class gpuFields {
 
     void init(fvMesh& mesh)
     {
+        reset();
         const polyBoundaryMesh& patches = mesh.boundaryMesh();
     
         nCells          = static_cast<int>(mesh.cells().size());
@@ -131,13 +127,23 @@ class gpuFields {
 	    _CUDA(cudaMalloc(reinterpret_cast<void**>(&d_csr_col) ,(nCells+2*nIFaces)*sizeof(int)));
 	    _CUDA(cudaMalloc(reinterpret_cast<void**>(&d_csr_val) ,(nCells+2*nIFaces)*sizeof(double)));
         _CUDA(cudaMemset(d_csr_rPtr, 0, (nCells+1)*sizeof(int)));
-    
+
+        initDone = true;       
     }
+
     void handle(fvMesh& mesh,
                 volScalarField& DT,
                 volScalarField& T)
     {
-         const polyBoundaryMesh& patches = mesh.boundaryMesh();
+        if (!initDone)
+        {
+             FatalErrorInFunction
+                << "ERROR: handle is called before init "
+                << endl
+                << abort(FatalError);
+        }
+
+        const polyBoundaryMesh& patches = mesh.boundaryMesh();
         surfaceScalarField gammaMagSf = -fvc::interpolate(DT) * mesh.magSf();
         forAll(patches, patchI)
         {
@@ -209,6 +215,7 @@ class gpuFields {
         _CUDA(cudaMemcpy(d_lAddr,     h_lAddr,    nIFaces*sizeof(int),cudaMemcpyHostToDevice));
         _CUDA(cudaMemcpy(d_uAddr,     h_uAddr,    nIFaces*sizeof(int),cudaMemcpyHostToDevice));
     }
+
     void update(fvMesh& mesh,
                 volScalarField& DT,
                 volScalarField& T)
@@ -230,8 +237,10 @@ class gpuFields {
         h_gammaMSF = &TgMagSflist->first();
         _CUDA(cudaMemcpy(d_gammaMSF, h_gammaMSF, nIFaces*sizeof(double),cudaMemcpyHostToDevice));
     }
+
     void reset()
     {
+        initDone = false;
         if (h_pf_BC)            free(h_pf_BC);
         if (h_pf_IC)            free(h_pf_IC);
         if (h_pf_GammaSf)       free(h_pf_GammaSf);
@@ -258,32 +267,34 @@ class gpuFields {
         if (d_csr_col)          _CUDA(cudaFree(d_csr_col));
         if (d_csr_val)          _CUDA(cudaFree(d_csr_val));
     } 
+
     void discKernel()
     {
     
-    discKernelWrapper(nCells,
-                        nIFaces,
-                        d_cV,
-                        d_Tot,
-                        d_deltaC,
-                        d_gammaMSF,
-                        d_uAddr,
-                        d_lAddr,
-                        numberOfPatches,
-                        maxPatches,
-                        d_pSize,
-                        d_pAdrr,
-                        d_pf_BC,
-                        d_pf_IC,
-                        d_pf_GammaSf,
-                        rDelgaG,
-                        d_diag,
-                        d_source,
-                        d_upper,
-                        d_lower
-                        );
+        discKernelWrapper(  nCells,
+                            nIFaces,
+                            d_cV,
+                            d_Tot,
+                            d_deltaC,
+                            d_gammaMSF,
+                            d_uAddr,
+                            d_lAddr,
+                            numberOfPatches,
+                            maxPatches,
+                            d_pSize,
+                            d_pAdrr,
+                            d_pf_BC,
+                            d_pf_IC,
+                            d_pf_GammaSf,
+                            rDelgaG,
+                            d_diag,
+                            d_source,
+                            d_upper,
+                            d_lower
+                            );
     }
-    void ldu2csr ()
+
+    void ldu2csr()
     {
         ldu2csrWrapper (    d_diag,
                             d_lower,
