@@ -66,7 +66,7 @@ class gpuFields {
 
     int *d_csr_rPtr;
     int *d_csr_col;
-	double *d_csr_val;
+    double *d_csr_val;
 
     bool initDone;
 
@@ -124,8 +124,8 @@ class gpuFields {
         _CUDA(cudaMalloc(reinterpret_cast<void**>(&d_uAddr)   ,nIFaces*sizeof(int)));
 
         _CUDA(cudaMalloc(reinterpret_cast<void**>(&d_csr_rPtr),(nCells+1)*sizeof(int)));
-	    _CUDA(cudaMalloc(reinterpret_cast<void**>(&d_csr_col) ,(nCells+2*nIFaces)*sizeof(int)));
-	    _CUDA(cudaMalloc(reinterpret_cast<void**>(&d_csr_val) ,(nCells+2*nIFaces)*sizeof(double)));
+        _CUDA(cudaMalloc(reinterpret_cast<void**>(&d_csr_col) ,(nCells+2*nIFaces)*sizeof(int)));
+        _CUDA(cudaMalloc(reinterpret_cast<void**>(&d_csr_val) ,(nCells+2*nIFaces)*sizeof(double)));
         _CUDA(cudaMemset(d_csr_rPtr, 0, (nCells+1)*sizeof(int)));
 
         initDone = true;       
