@@ -2,7 +2,6 @@
 #define BSIZE 512
 #define BSIZEX 32
 #define BSIZEY 32
-
 __global__ void cellKernel( double *vcs,
                         double* tot,
                         double rDelgaG,
@@ -57,7 +56,7 @@ __global__ void boundaryKernel(int *pSize,
 }
 
 
-void laplasKernel( int sizeDiag,
+void discKernelWrapper( int sizeDiag,
                 int sizeFace,
                 double *vcs, 
                 double *tot,

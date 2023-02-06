@@ -258,6 +258,46 @@ class gpuFields {
         if (d_csr_col)          _CUDA(cudaFree(d_csr_col));
         if (d_csr_val)          _CUDA(cudaFree(d_csr_val));
     } 
+    void discKernel()
+    {
+    
+    discKernelWrapper(nCells,
+                        nIFaces,
+                        d_cV,
+                        d_Tot,
+                        d_deltaC,
+                        d_gammaMSF,
+                        d_uAddr,
+                        d_lAddr,
+                        numberOfPatches,
+                        maxPatches,
+                        d_pSize,
+                        d_pAdrr,
+                        d_pf_BC,
+                        d_pf_IC,
+                        d_pf_GammaSf,
+                        rDelgaG,
+                        d_diag,
+                        d_source,
+                        d_upper,
+                        d_lower
+                        );
+    }
+    void ldu2csr ()
+    {
+        ldu2csrWrapper (    d_diag,
+                            d_lower,
+                            d_upper,
+                            d_lAddr,
+                            d_uAddr,
+                            d_csr_rPtr ,
+                            d_csr_col,
+                            d_csr_val,
+                            nCells,
+                            nIFaces
+                            );
+    }
+
 };
     
    

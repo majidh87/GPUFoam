@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-void laplasKernel( int sizeDiag,
+void discKernelWrapper( int sizeDiag,
                 int sizeFace,
                 double *vcs, 
                 double *tot,

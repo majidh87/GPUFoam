@@ -58,6 +58,7 @@ Description
 #include "fvOptions.H"
 #include "simpleControl.H"
 #include "discretizationKernel.h"
+#include "ldu2csr.h"
 #include <cuda_runtime_api.h>
 #include <cuda.h>
 #include "gpuFields.H"
@@ -118,27 +119,10 @@ int main(int argc, char *argv[])
             DiscTime.stop();
 
             g.update(mesh,DT,T);
-            laplasKernel(g.nCells,
-                        g.nIFaces,
-                        g.d_cV,
-                        g.d_Tot,
-                        g.d_deltaC,
-                        g.d_gammaMSF,
-                        g.d_uAddr,
-                        g.d_lAddr,
-                        g.numberOfPatches,
-                        g.maxPatches,
-                        g.d_pSize,
-                        g.d_pAdrr,
-                        g.d_pf_BC,
-                        g.d_pf_IC,
-                        g.d_pf_GammaSf,
-                        g.rDelgaG,
-                        g.d_diag,
-                        g.d_source,
-                        g.d_upper,
-                        g.d_lower
-                        );
+            
+            g.discKernel();
+
+            g.ldu2csr ();
 
             Info<<"  Total number of cells in mesh: " <<endl;
 

@@ -10,4 +10,5 @@ EXE_LIBS = \
     -L/usr/local/cuda/lib64 \
     -lcuda \
     -lcudart \
-     discretizationKernel.o
+     discretizationKernel.o \
+     ldu2csr.o
