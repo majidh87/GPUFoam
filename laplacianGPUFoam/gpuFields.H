@@ -270,7 +270,6 @@ class gpuFields {
 
     void discKernel()
     {
-    
         discKernelWrapper(  nCells,
                             nIFaces,
                             d_cV,
