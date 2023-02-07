@@ -62,7 +62,9 @@ Description
 #include "ldu2csr.h"
 #include <cuda_runtime_api.h>
 #include <cuda.h>
+#include <amgx_c.h>
 #include "gpuFields.H"
+#include "amgxFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -100,6 +102,10 @@ int main(int argc, char *argv[])
     gpuFields g;
     g.init(mesh);
     g.handle(mesh,DT,T);
+
+    amgxFields af;
+    af.init();
+    
     
     Info<< "\nCalculating temperature distribution\n" << endl;
     
@@ -122,10 +128,25 @@ int main(int argc, char *argv[])
             g.update(mesh,DT,T);
             
             g.discKernel();
-            
+
             g.ldu2csr ();
 
-            Info<<"  Total number of cells in mesh: " <<endl;
+            af.setup(   g.d_csr_rPtr,
+                        g.d_csr_col,
+                        g.d_csr_val,
+                        g.d_source,
+                        g.nCells,
+                        g.nIFaces
+                        );
+
+            af.solve();
+
+            double *T_new = af.getSolution(g.nCells);
+
+            for(label i=0; i<g.nCells; i++) 
+            {
+                Info << "cell ="<<i<< " and T_test= "<<T_new[i]<<endl; 
+            }
 
         }
 

@@ -3,6 +3,20 @@
 using namespace std;
 
 #define BSIZE 512
+#define BSIZEX 32
+#define BSIZEY 32
+
+#define checkCudaErrors(call)                                       \
+    do {                                                            \
+        cudaError_t err = call;                                     \
+        if (err != cudaSuccess) {                                   \
+            printf("CUDA error at %s %d: %s\n", __FILE__, __LINE__, \
+                         cudaGetErrorString(err));                  \
+            exit(EXIT_FAILURE);                                     \
+        }                                                           \
+    } while (0)
+
+#define _CUDA(x) checkCudaErrors(x)
 
 __global__ void kernelRowSize(int *upperAddr, int *lowerAddr, int* rIdx, int nFaces)
 {
@@ -10,18 +24,20 @@ __global__ void kernelRowSize(int *upperAddr, int *lowerAddr, int* rIdx, int nFa
     if (id >= nFaces)
 		return;
 
-	atomicAdd(&rIdx[lowerAddr[id]+1], 1);
+	atomicAdd(&rIdx[lowerAddr[id]+1], 1); 
 	atomicAdd(&rIdx[upperAddr[id]+1], 1);	
 }
 
 __global__ void kernelRowPtr(int *rIdx, int* rPtr, int nCells)
 {
-    int idx = blockIdx.x*blockDim.x+threadIdx.x;
-	if (idx > nCells)
+	int idx = blockIdx.x*blockDim.x+threadIdx.x;
+	int idy = blockIdx.y*blockDim.y+threadIdx.y;
+    if (idx > nCells || idy > nCells)
 		return;
 
-	for (int i=0; i<= idx; i++)
-		rPtr[idx]+=rIdx[i];
+	if (idx<=idy)
+		atomicAdd(&rPtr[idy], rIdx[idx]+1);
+	rPtr[idy]--;
 }
 
 __global__ void kernelLower(int *upperAddr, int *lowerAddr, double *lower, int* rIdx, int* colIdx, double* val, int nFaces)
@@ -77,8 +93,8 @@ void ldu2csrWrapper (	double *d_diag,
 	
 	int *d_rIdx;
 	
-	cudaMalloc(&d_rIdx, (nCells+1)*sizeof(int));
-	cudaMemset(d_rIdx, 0, (nCells+1)*sizeof(int));
+	_CUDA(cudaMalloc(&d_rIdx, (nCells+1)*sizeof(int)));
+	_CUDA(cudaMemset(d_rIdx, 0, (nCells+1)*sizeof(int)));
 	
 
 	int blockSize = BSIZE;
@@ -86,9 +102,12 @@ void ldu2csrWrapper (	double *d_diag,
 	int gridSizeC = (int)ceil((double)nCells/blockSize);
 	int gridSizeC1 = (int)ceil((double)(nCells+1)/blockSize);
 
-    kernelRowSize<<<gridSizeF, blockSize>>>(d_upperAddr, d_lowerAddr, d_rIdx, nFaces);
+	dim3 bSize(BSIZEX,BSIZEY,1);
+	dim3 gSize((int)ceil((float)(nCells+1)/bSize.x), (int)ceil((float)(nCells+1)/bSize.y),1);
 
-	kernelRowPtr<<<gridSizeC1, blockSize>>>(d_rIdx, d_rowPtr, nCells);
+    kernelRowSize<<<gridSizeF, blockSize>>>(d_upperAddr, d_lowerAddr, d_rIdx, nFaces);
+   
+	kernelRowPtr<<<gSize, bSize>>>(d_rIdx, d_rowPtr, nCells);
 	cudaMemcpy( d_rIdx, d_rowPtr, (nCells+1)*sizeof(int), cudaMemcpyDeviceToDevice ); 
 
 	kernelLower<<<gridSizeF, blockSize>>>(d_upperAddr, d_lowerAddr, d_lower , d_rIdx, d_colIdx, d_value, nFaces);
@@ -96,7 +115,6 @@ void ldu2csrWrapper (	double *d_diag,
 	kernelDiag<<<gridSizeC, blockSize>>>(d_diag , d_rIdx, d_colIdx, d_value, nCells);
 
 	kernelUpper<<<gridSizeF, blockSize>>>(d_upperAddr, d_lowerAddr, d_upper , d_rIdx, d_colIdx, d_value, nFaces);
- 
-   
-	
+
+	_CUDA(cudaFree(d_rIdx));
 }
