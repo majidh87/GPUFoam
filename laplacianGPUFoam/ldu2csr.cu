@@ -32,17 +32,17 @@ __global__ void kernelRowSizeOffDiag(int *upperAddr, int *lowerAddr, int* rIdx, 
 __global__ void kernelRowSizeDiag(int* rIdx, int nCells)
 {
     int id = blockIdx.x*blockDim.x+threadIdx.x;
-    if (id > nCells)
+    if (id >= nCells)
 		return;
 
-	rIdx[id+1]++;	
+     rIdx[id+1]++;	
 }
 
 __global__ void kernelRowPtr(int *rIdx, int* rPtr, int nCells)
 {
 	int idx = blockIdx.x*blockDim.x+threadIdx.x;
 	int idy = blockIdx.y*blockDim.y+threadIdx.y;
-    if (idx > nCells || idy > nCells)
+        if (idx > nCells || idy > nCells)
 		return;
 	
 	if (idx<=idy)
