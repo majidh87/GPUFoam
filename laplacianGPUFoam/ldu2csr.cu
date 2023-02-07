@@ -1,4 +1,5 @@
 
+
 #include <iostream>
 using namespace std;
 
@@ -18,7 +19,7 @@ using namespace std;
 
 #define _CUDA(x) checkCudaErrors(x)
 
-__global__ void kernelRowSize(int *upperAddr, int *lowerAddr, int* rIdx, int nFaces)
+__global__ void kernelRowSizeOffDiag(int *upperAddr, int *lowerAddr, int* rIdx, int nFaces)
 {
     int id = blockIdx.x*blockDim.x+threadIdx.x;
     if (id >= nFaces)
@@ -28,16 +29,24 @@ __global__ void kernelRowSize(int *upperAddr, int *lowerAddr, int* rIdx, int nFa
 	atomicAdd(&rIdx[upperAddr[id]+1], 1);	
 }
 
+__global__ void kernelRowSizeDiag(int* rIdx, int nCells)
+{
+    int id = blockIdx.x*blockDim.x+threadIdx.x;
+    if (id > nCells)
+		return;
+
+	rIdx[id+1]++;	
+}
+
 __global__ void kernelRowPtr(int *rIdx, int* rPtr, int nCells)
 {
 	int idx = blockIdx.x*blockDim.x+threadIdx.x;
 	int idy = blockIdx.y*blockDim.y+threadIdx.y;
     if (idx > nCells || idy > nCells)
 		return;
-
+	
 	if (idx<=idy)
-		atomicAdd(&rPtr[idy], rIdx[idx]+1);
-	rPtr[idy]--;
+		atomicAdd(&rPtr[idy], rIdx[idx]);
 }
 
 __global__ void kernelLower(int *upperAddr, int *lowerAddr, double *lower, int* rIdx, int* colIdx, double* val, int nFaces)
@@ -98,15 +107,16 @@ void ldu2csrWrapper (	double *d_diag,
 	
 
 	int blockSize = BSIZE;
-    int gridSizeF = (int)ceil((double)nFaces/blockSize);
+        int gridSizeF = (int)ceil((double)nFaces/blockSize);
 	int gridSizeC = (int)ceil((double)nCells/blockSize);
 	int gridSizeC1 = (int)ceil((double)(nCells+1)/blockSize);
 
 	dim3 bSize(BSIZEX,BSIZEY,1);
 	dim3 gSize((int)ceil((float)(nCells+1)/bSize.x), (int)ceil((float)(nCells+1)/bSize.y),1);
 
-    kernelRowSize<<<gridSizeF, blockSize>>>(d_upperAddr, d_lowerAddr, d_rIdx, nFaces);
-   
+        kernelRowSizeOffDiag<<<gridSizeF, blockSize>>>(d_upperAddr, d_lowerAddr, d_rIdx, nFaces);
+	kernelRowSizeDiag<<<gridSizeC, blockSize>>>(d_rIdx, nCells);
+	
 	kernelRowPtr<<<gSize, bSize>>>(d_rIdx, d_rowPtr, nCells);
 	cudaMemcpy( d_rIdx, d_rowPtr, (nCells+1)*sizeof(int), cudaMemcpyDeviceToDevice ); 
 
