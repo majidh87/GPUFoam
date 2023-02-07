@@ -1,13 +1,18 @@
 EXE_INC = \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
     -I$(LIB_SRC)/meshTools/lnInclude \
-    -I/usr/local/cuda-10.2/include
+    -I/usr/local/cuda-10.2/include \
+    -I$(AMG_INCLUDE)
 
 EXE_LIBS = \
     -lfiniteVolume \
     -lfvOptions \
     -lmeshTools \
     -L/usr/local/cuda/lib64 \
+    -L$(AMG_BUILD) \
     -lcuda \
+    -lamgxsh \
     -lcudart \
-     kernel0.o
+    -fopenmp \
+     discretizationKernel.o \
+     ldu2csr.o
