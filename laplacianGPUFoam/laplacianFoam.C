@@ -58,16 +58,14 @@ Description
 #include "fvOptions.H"
 #include "simpleControl.H"
 #include "error.H"
-#include "discretizationKernel.h"
-#include "ldu2csr.h"
 #include <cuda_runtime_api.h>
 #include <cuda.h>
 #include <amgx_c.h>
-#include "gpuFields.H"
-#include "amgxFields.H"
+#include <AmgXSolver.H>
+
+
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
 int main(int argc, char *argv[])
 {
     argList::addNote
@@ -81,15 +79,11 @@ int main(int argc, char *argv[])
     #include "setRootCaseLists.H"
     #include "createTime.H"
     #include "createMesh.H"
+    #include "discretizationKernel.h"
+    #include "gpuFields.H"
 
     //Add clocks to profile
     #include "StopWatch.H"
-    StopWatch DiscTime;
-    StopWatch solveTime;
-    StopWatch kernel_Disc;
-    StopWatch kernel_ldu2csr;
-    StopWatch kernel_amgx;
-    StopWatch kernel_amgx_solve;
 
     simpleControl simple(mesh);
 
@@ -97,16 +91,30 @@ int main(int argc, char *argv[])
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-    /////// GPU Initialization /////////
-    
     gpuFields g;
+    AmgXSolver AmgSol;
+    AmgXCSRMatrix Amat;
+    MPI_Init(NULL, NULL);
+    const MPI_Comm amgx_mpi_comm = MPI_COMM_WORLD;
+    const std::string modeStr = "dDDI";
+    const std::string cfgFile = "./system/config";
+
     g.init(mesh);
     g.handle(mesh,DT,T);
+    Amat. initialiseComms(
+    amgx_mpi_comm,
+    0);
 
-    amgxFields af;
-    af.init();
+    AmgSol.initialize
+        (
+            amgx_mpi_comm,
+            modeStr,
+            cfgFile
+        );
     
-    
+    bool firstIter = true;
+
+
     Info<< "\nCalculating temperature distribution\n" << endl;
     
     while (simple.loop())
@@ -115,46 +123,78 @@ int main(int argc, char *argv[])
                
         while (simple.correctNonOrthogonal())
         {
-            DiscTime.start(); // OF discretization on CPU
-            fvScalarMatrix TEqn
-            (
-                fvm::ddt(T) 
-                - fvm::laplacian(DT, T)
-             ==
-                fvOptions(T)
-            );
-            DiscTime.stop();
-
-            g.update(mesh,DT,T);
             
-            g.discKernel();
 
-            g.ldu2csr ();
-
-            af.setup(   g.d_csr_rPtr,
-                        g.d_csr_col,
-                        g.d_csr_val,
-                        g.d_source,
-                        g.nCells,
-                        g.nIFaces
-                        );
-
-            af.solve();
-
-            double *T_new = af.getSolution(g.nCells);
-
-            for(label i=0; i<g.nCells; i++) 
+            if (firstIter)
             {
-                Info << "cell ="<<i<< " and T_test= "<<T_new[i]<<endl; 
+                Info<< "discritization " <<endl;
+                g.discKernel();
+                Amat.setValuesLDU
+                (
+                g.nCells,
+                g.nIFaces,
+                0,
+                0,
+                0,
+                g.d_uAddr,
+                g.d_lAddr,
+                0,
+                NULL,
+                NULL,
+                g.d_diag,
+                g.d_upper,
+                g.d_lower,
+                NULL
+                ); 
+
+            Info<< "amgx.setup " <<endl;
+                AmgSol.setOperator
+                (
+                g.nCells,
+                g.nCells,
+                g.nCells+2*g.nIFaces,
+                Amat
+                );
+                firstIter = false;
             }
+            else
+            {
+                g.update();
+                g.updateDisc();
+                Amat.updateValues(  g.nCells,
+                            g.nIFaces,
+                            0,
+                            g.d_diag,
+                            g.d_upper,
+                            g.d_lower,
+                            NULL
+                            );
+                AmgSol.updateOperator(  g.nCells,
+                                g.nCells+2*g.nIFaces,
+                                Amat
+                            );
+            }
+            Info<< "amgx.solve " <<endl;
 
+            AmgSol.solve
+            (
+                g.nCells,
+                &g.h_T_new[0],
+                &g.d_source[0],
+                Amat
+            );
+        
+            /*for(label i=0; i<10; i++) 
+            {  
+                Info <<"REsult:"<<g.h_T_new[i]<<endl; 
+            }*/
         }
-
-        #include "write.H"
+        
 
         runTime.printExecutionTime(Info);
     }
-
+    
+    //MPI_Finalize();
     Info<< "End\n" << endl;
 
     return 0;

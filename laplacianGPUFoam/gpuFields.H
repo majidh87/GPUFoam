@@ -1,6 +1,7 @@
 #include "fvCFD.H"
 #include "fvOptions.H"
 #include "simpleControl.H"
+#include <AmgXCSRMatrix.H>
 
 #define checkCudaErrors(call)                                       \
     do {                                                            \
@@ -68,6 +69,16 @@ class gpuFields {
     int *d_csr_col;
     double *d_csr_val;
 
+    //int *d_csr_rPtrTest;
+    //int *d_csr_colTest;
+    //double *d_csr_valTest;
+
+    double* h_T_new;
+
+   
+
+    //f2cFields f2c;
+
     bool initDone;
 
     gpuFields():
@@ -109,7 +120,10 @@ class gpuFields {
     d_upper(NULL),
     d_csr_rPtr(NULL),
     d_csr_col(NULL),
-    d_csr_val(NULL)
+    d_csr_val(NULL)//,
+    //d_csr_rPtrTest(NULL),
+    //d_csr_colTest(NULL),
+    //d_csr_valTest(NULL)
     {
         initDone = false;
     }
@@ -126,6 +140,7 @@ class gpuFields {
         nIFaces         = static_cast<int>(mesh.faceNeighbour().size());
         numberOfPatches = static_cast<int>(patches.size());
 
+        h_T_new         = static_cast<double*>(malloc(nCells*sizeof(double)));
         h_pSize         = static_cast<int*>(malloc(numberOfPatches*sizeof(int)));
         h_pAdrr         = static_cast<int**>(malloc(numberOfPatches*sizeof(int*)));
         h_pf_BC         = static_cast<double**>(malloc(numberOfPatches*sizeof(double*)));
@@ -157,10 +172,12 @@ class gpuFields {
         _CUDA(cudaMalloc(reinterpret_cast<void**>(&d_lAddr)   ,nIFaces*sizeof(int)));
         _CUDA(cudaMalloc(reinterpret_cast<void**>(&d_uAddr)   ,nIFaces*sizeof(int)));
 
-        _CUDA(cudaMalloc(reinterpret_cast<void**>(&d_csr_rPtr),(nCells+1)*sizeof(int)));
-        _CUDA(cudaMalloc(reinterpret_cast<void**>(&d_csr_col) ,(nCells+2*nIFaces)*sizeof(int)));
-        _CUDA(cudaMalloc(reinterpret_cast<void**>(&d_csr_val) ,(nCells+2*nIFaces)*sizeof(double)));
-        _CUDA(cudaMemset(d_csr_rPtr, 0, (nCells+1)*sizeof(int)));
+        //_CUDA(cudaMalloc(reinterpret_cast<void**>(&d_T_new)   ,nCells*sizeof(double)));
+        //_CUDA(cudaMalloc(reinterpret_cast<void**>(&d_csr_rPtrTest) ,(nCells+1)*sizeof(int)));
+        //_CUDA(cudaMalloc(reinterpret_cast<void**>(&d_csr_colTest) ,(nCells+2*nIFaces)*sizeof(int)));
+        //_CUDA(cudaMalloc(reinterpret_cast<void**>(&d_csr_valTest) ,(nCells+2*nIFaces)*sizeof(double)));
+
+        //f2c.init();
 
         initDone = true;       
     }
@@ -177,6 +194,7 @@ class gpuFields {
                 << abort(FatalError);
         }
 
+        // Boundary condition data
         const polyBoundaryMesh& patches = mesh.boundaryMesh();
         surfaceScalarField gammaMagSf = -fvc::interpolate(DT) * mesh.magSf();
         forAll(patches, patchI)
@@ -225,6 +243,7 @@ class gpuFields {
             _CUDA(cudaMemcpy(dInh_pf_GammaSf[i]   ,h_pf_GammaSf[i], h_pSize[i]*sizeof(double), cudaMemcpyHostToDevice));
         }
         
+        // mesh data
         const scalarList* listPtr       = &mesh.V();
         const scalarList* deltaCPtr     = &mesh.deltaCoeffs();
         const scalarList* magSfPtr      = &mesh.magSf();
@@ -248,15 +267,11 @@ class gpuFields {
         _CUDA(cudaMemcpy(d_sf,        h_sf,       nIFaces*sizeof(double),cudaMemcpyHostToDevice));
         _CUDA(cudaMemcpy(d_lAddr,     h_lAddr,    nIFaces*sizeof(int),cudaMemcpyHostToDevice));
         _CUDA(cudaMemcpy(d_uAddr,     h_uAddr,    nIFaces*sizeof(int),cudaMemcpyHostToDevice));
-    }
 
-    void update(fvMesh& mesh,
-                volScalarField& DT,
-                volScalarField& T)
-    {
+        //update
         scalar rDeltaT = 1.0/mesh.time().deltaTValue();
         rDelgaG= static_cast<double>(rDeltaT);
-        surfaceScalarField sf_DT = -fvc::interpolate(DT);
+        surfaceScalarField sf_DT = -fvc::interpolate(DT); 
         surfaceScalarField gammaMagSf_ = sf_DT * mesh.magSf();
             
         // Update Told to device
@@ -270,6 +285,16 @@ class gpuFields {
         scalarList* TgMagSflist = const_cast<scalarList*>(gMgaSfPtr);
         h_gammaMSF = &TgMagSflist->first();
         _CUDA(cudaMemcpy(d_gammaMSF, h_gammaMSF, nIFaces*sizeof(double),cudaMemcpyHostToDevice));
+
+    }
+
+    //  void updateF()
+    // {
+
+    // }
+    void update()
+    {
+        _CUDA(cudaMemcpy(d_Tot, h_T_new, nCells*sizeof(double),cudaMemcpyHostToDevice));
     }
 
     void reset()
@@ -296,10 +321,10 @@ class gpuFields {
         if (d_sf)               _CUDA(cudaFree(d_sf));
         if (d_gammaMSF)         _CUDA(cudaFree(d_gammaMSF));
         if (d_lAddr)            _CUDA(cudaFree(d_lAddr));
-        if (d_uAddr)            _CUDA(cudaFree(d_uAddr));
-        if (d_csr_rPtr)         _CUDA(cudaFree(d_csr_rPtr));
-        if (d_csr_col)          _CUDA(cudaFree(d_csr_col));
-        if (d_csr_val)          _CUDA(cudaFree(d_csr_val));
+        if (d_uAddr)            _CUDA(cudaFree(d_uAddr));   
+        //if (d_csr_rPtrTest)            _CUDA(cudaFree(d_csr_rPtrTest));      
+        //if (d_csr_colTest)            _CUDA(cudaFree(d_csr_rPtrTest));
+        //if (d_csr_colTest)            _CUDA(cudaFree(d_csr_rPtrTest)); 
     } 
 
     void discKernel()
@@ -327,20 +352,51 @@ class gpuFields {
                             );
     }
 
-    void ldu2csr()
+    void updateDisc()
+    {
+        updateDiscWrapper(  nCells,
+                            d_cV,
+                            d_Tot,
+                            numberOfPatches,
+                            maxPatches,
+                            d_pSize,
+                            d_pAdrr,
+                            d_pf_BC,
+                            d_pf_IC,
+                            d_pf_GammaSf,
+                            rDelgaG,
+                            d_source
+                            );
+    }
+
+    /*void ldu2csr()
     {
         ldu2csrWrapper (    d_diag,
                             d_lower,
                             d_upper,
                             d_lAddr,
                             d_uAddr,
-                            d_csr_rPtr ,
-                            d_csr_col,
-                            d_csr_val,
+                            d_csr_rPtrTest ,
+                            d_csr_colTest,
+                            d_csr_valTest,
                             nCells,
                             nIFaces
                             );
-    }
+    }*/
+
+    /*void setValues()
+    {
+        f2c.setValues(nCells,
+                        nIFaces,
+                        d_uAddr,
+                        d_lAddr,
+                        d_diag,
+                        d_upper,
+                        d_lower,
+                        d_csr_rPtr,
+                        d_csr_col,
+                        d_csr_val);
+    }*/
 
 };
     

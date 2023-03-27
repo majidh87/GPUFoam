@@ -23,4 +23,18 @@ void discKernelWrapper( int sizeDiag,
                         double *h_upper,
                         double *h_lower
                         );
+void updateDiscWrapper(int sizeDiag,
+                        double *vcs, 
+                        double *tot,
+                        int numOfPatches,
+                        int maxPatches,
+                        int *d_pSize,
+                        int **d_pAdrr,
+                        double **d_pf_BC,
+                        double **d_pf_IC,
+                        double **d_pf_GammaSf,
+                        double rDelgaG,
+                        double *d_source
+                        );
+
 

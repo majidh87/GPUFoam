@@ -64,11 +64,12 @@ class amgxFields {
         AMGX_solver_solve_with_0_initial_guess( solver, b, x );
     }
 
-    double* getSolution( int nCells)
+    void getSolution( int nCells, double*&h_T_new)
     {
-        result= static_cast<double*>(malloc(nCells*sizeof(double)));
+        //cudaMalloc(reinterpret_cast<void**>(&result),(nCells*sizeof(double)));
+        result = static_cast<double*>(malloc(nCells*sizeof(double)));
         AMGX_vector_download(x, result);
-        return result;
+        h_T_new=result;
     }
     void reset()
     {

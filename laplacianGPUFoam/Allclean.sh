@@ -1,0 +1,2 @@
+wclean
+rm discretizationKernel.o
