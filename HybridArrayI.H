@@ -195,6 +195,21 @@ void HybridArray<T>::copy(const T* src)
     }
 }
 
+template<typename T>
+void HybridArray<T>::set(const label i, const T value)
+{
+        if(i >= 0 && i < size_ )
+        {
+            data_[i] = value;
+        }
+        else
+        {
+            FatalErrorInFunction
+                << "array index out of bounds"
+                << abort(FatalError);
+        }
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

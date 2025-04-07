@@ -118,6 +118,9 @@ public:
 
         //- copy src buffer 
         void copy(const T* src);
+        
+        //- set an special element of array
+        void set(const label i, const T value);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
