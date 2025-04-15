@@ -49,16 +49,16 @@ HybridMatrix<T>::HybridMatrix()
 :
     rows_(0),
     cols_(0),
-    onGPU_(false),
+    storeType_(UNKNOWN_STATE),
     data_(nullptr)
 {}
 
 template<typename T>
-HybridMatrix<T>::HybridMatrix(const label rows, const bool onGPU)
+HybridMatrix<T>::HybridMatrix(const label rows, const STORE_TYPE storeType)
 :
     rows_(rows),
     cols_(rows, 0),
-    onGPU_(onGPU),
+    storeType_(storeType),
     data_(nullptr)
 {}
 
@@ -82,7 +82,7 @@ void HybridMatrix<T>::allocate(const labelList& colsSize)
 
     cols_ = colsSize;
 
-    if(onGPU_)
+    if(storeType_== STORE_ON_GPU)
     {
         // Allocate GPU memory
 #ifdef CUDA_USE
@@ -96,7 +96,25 @@ void HybridMatrix<T>::allocate(const labelList& colsSize)
 #endif
         }
     }
-    else
+    else if (storeType_==STORE_ON_HOST_GPU)
+    {
+        // Allocate host memory
+        data_ = static_cast<T**>(malloc(rows_*sizeof(T*)));
+        if(!data_)
+        {
+            FatalErrorInFunction
+                << "Host memory allocation failed"
+                << abort(FatalError);
+        }
+        for(label i=0; i<rows_; ++i)
+        {
+#ifdef CUDA_USE
+        _CUDA(cudaMalloc(reinterpret_cast<void**>(&data_[i]), cols_[i] * sizeof(T)));
+#endif
+        }
+
+    }
+    else if(storeType_==STORE_ON_HOST)
     {
         // Allocate host memory
         data_ = static_cast<T**>(malloc(rows_*sizeof(T*)));
@@ -121,19 +139,20 @@ void HybridMatrix<T>::allocate(const labelList& colsSize)
 }
 
 template<typename T> 
-void HybridMatrix<T>::allocate_rows(const label rows, const bool onGPU)
+void HybridMatrix<T>::allocate_rows(const label rows, const STORE_TYPE storeType)
 {
     // Deallocate existing memory
     deallocate();
     cols_.setSize(rows,0);
-    if(onGPU_)
+    storeType_ = storeType;
+    if(storeType_== STORE_ON_GPU)
     {
         // Allocate GPU memory
 #ifdef CUDA_USE
         _CUDA(cudaMalloc(reinterpret_cast<void***>(&data_), rows_ * sizeof(T*)));
 #endif
     }
-    else
+    else if(storeType_== STORE_ON_HOST || storeType_ == STORE_ON_HOST_GPU)
     {
         // Allocate host memory
         data_ = static_cast<T**>(malloc(rows_*sizeof(T*)));
@@ -150,13 +169,13 @@ template<typename T>
 void HybridMatrix<T>::allocate_col(const label row, const label colSize)
 {
     cols_[row] = colSize;
-    if(onGPU_)
+    if(storeType_== STORE_ON_GPU || storeType_== STORE_ON_HOST_GPU)
     {
 #ifdef CUDA_USE
         _CUDA(cudaMalloc(reinterpret_cast<void**>(&data_[row]), cols_[row] * sizeof(T)));
 #endif
     }
-    else
+    else if(storeType_== STORE_ON_HOST)
     {
 
             data_[row] = static_cast<T*>(malloc(cols_[row]*sizeof(T)));
@@ -175,7 +194,7 @@ void HybridMatrix<T>::deallocate()
 {
     if(data_)
     {
-        if(onGPU_)
+        if(storeType_== STORE_ON_GPU)
         {
 #ifdef CUDA_USE
             for(label i=0; i<rows_; ++i)
@@ -185,12 +204,22 @@ void HybridMatrix<T>::deallocate()
             cudaFree(data_);
 #endif
         }
-        else
+        else if(storeType_== STORE_ON_HOST)
         {
             for(label i=0; i<rows_; ++i)
             {
                 if(data_[i]) free(data_[i]);
             }
+            free(data_);
+        }
+        else if(storeType_== STORE_ON_HOST_GPU)
+        {
+#ifdef CUDA_USE
+            for(label i=0; i<rows_; ++i)
+            {
+                if(data_[i]) cudaFree(data_[i]);
+            }
+#endif
             free(data_);
         }
         data_ = nullptr;
@@ -200,7 +229,7 @@ void HybridMatrix<T>::deallocate()
 template<typename T>
 void HybridMatrix<T>::copy(const T** src)
 {
-    if(onGPU_)
+    if(storeType_== STORE_ON_GPU || storeType_== STORE_ON_HOST_GPU)
     {
         for(label i=0; i<rows_; ++i)
         {
@@ -209,12 +238,28 @@ void HybridMatrix<T>::copy(const T** src)
 #endif
         }
     }
-    else
+    else if(storeType_== STORE_ON_HOST)
     {
         for(label i=0; i<rows_; ++i)
         {
             memcpy(data_[i], src[i], cols_[i]*sizeof(T));
         }
+    }
+}
+
+//- copy src to row column
+template<typename T>        
+void HybridMatrix<T>::copy_col(const label row, const T* src)
+{
+    if(storeType_== STORE_ON_GPU || storeType_== STORE_ON_HOST_GPU)
+    {
+#ifdef CUDA_USE
+        _CUDA(cudaMemcpy(data_[row], src, cols_[row]*sizeof(T),cudaMemcpyHostToDevice));
+#endif
+    }
+    else if(storeType_== STORE_ON_HOST)
+    {
+        memcpy(data_[row], src, cols_[row]*sizeof(T));
     }
 }
 
@@ -233,9 +278,9 @@ label HybridMatrix<T>::cols(const label row) const
 }
 
 template<typename T>
-bool HybridMatrix<T>::onDevice() const noexcept
+STORE_TYPE HybridMatrix<T>::onDevice() const noexcept
 {
-    return onGPU_;
+    return storeType_;
 }
 template<typename T>
 T** HybridMatrix<T>::Data() const 

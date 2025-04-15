@@ -49,6 +49,14 @@ SourceFiles
 
 namespace Foam {
 
+//- Enum for determine store type
+enum STORE_TYPE
+{
+    UNKNOWN_STATE,
+    STORE_ON_HOST,
+    STORE_ON_GPU,
+    STORE_ON_HOST_GPU
+};
 //- Template class for dynamic matrix allocation supporting host/GPU memory.
 template<typename T>
 class HybridMatrix
@@ -65,7 +73,7 @@ private:
     labelList cols_;
 
     //- Flag indicating whether data is stored on GPU (true) or host (false)
-    bool onGPU_;
+    STORE_TYPE storeType_;
 
 public:
 
@@ -75,7 +83,7 @@ public:
         HybridMatrix();
 
         //- Construct with row count and storage location flag (host or GPU)
-        HybridMatrix(const label rows, const bool onGPU);
+        HybridMatrix(const label rows, const STORE_TYPE storeType);
 
         //- No copy assignment from plain pointer (uncontrolled access)
         void operator=(T** p) = delete;
@@ -96,7 +104,7 @@ public:
         void allocate(const labelList& colsSize);
 
         //- Allocate memory for the rows of matrix 
-        void allocate_rows(const label rows, const bool onGPU);
+        void allocate_rows(const label rows, const STORE_TYPE storeType);
 
         //- Allocate memory for the cols of special row of matrix 
         void allocate_col(const label row, const label colSize);
@@ -107,6 +115,8 @@ public:
     	//- copy src buffer 
 	    void copy(const T** src);
 
+        //- copy src to row column
+        void copy_col(const label row, const T* src);
         // Accessors
 
             //- Return number of rows in the matrix
@@ -116,7 +126,7 @@ public:
             label cols(const label row) const;
 
             //- Check if data is stored on GPU or host
-            bool onDevice() const noexcept;
+            STORE_TYPE onDevice() const noexcept;
 
             //- Return matrix data
             T** Data() const;
