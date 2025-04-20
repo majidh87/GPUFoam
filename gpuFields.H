@@ -22,7 +22,7 @@
 
 class gpuFields { 
 
-  private:    
+  public:    
     Foam::label numCells_;          // Number of cells in the mesh
     Foam::label numInternalFaces_;  // Number of internal faces in the mesh
     Foam::scalar invDeltaT_;      // Reciprocal of delta t (time step)
@@ -55,19 +55,13 @@ class gpuFields {
     
 
     // Device arrays for mesh-related data
-    HybridArray<Foam::scalar> deviceCellVolumes_;        // Device: Cell volumes
+    Foam::MeshFields deviceMesh;
+
     HybridArray<Foam::scalar> deviceOldTemperature_;       // Device: Old time temperature field
-    HybridArray<Foam::scalar> deviceDeltaCellCenters_;    // Device: Delta cell centers for each internal face
-    HybridArray<Foam::scalar> deviceFaceAreas_;        // Device: Face surface area magnitude
     HybridArray<Foam::scalar> deviceGammaMagSf_;  // Device: Gamma multiplied by face area
-    HybridArray<Foam::label> deviceLowerAddress_;        // Device: Lower address (owner) for each face
-    HybridArray<Foam::label> deviceUpperAddress_;        // Device: Upper address (neighbour) for each face
 
     // Device arrays for linear system (matrix and source terms)
-    Foam::scalar *deviceDiagonal_;      // Device: Diagonal elements of the matrix
-    Foam::scalar *deviceSource_;    // Device: Source term array
-    Foam::scalar *deviceLower_;     // Device: Lower triangular elements of the matrix
-    Foam::scalar *deviceUpper_;     // Device: Upper triangular elements of the matrix
+    Foam::LduMatrixFields deviceLdu;
 
     // Device arrays for CSR (Compressed Sparse Row) format matrix
     Foam::label *deviceCsrRowPtr_;     // Device: Row pointers for CSR format
@@ -86,10 +80,6 @@ public:
     numInternalFaces_(0),
     maxPatchSize_(0),
     numPatches_(0),
-    deviceDiagonal_(NULL),
-    deviceSource_(NULL),
-    deviceLower_(NULL),
-    deviceUpper_(NULL),
     deviceCsrRowPtr_(NULL),
     deviceCsrColInd_(NULL),
     deviceCsrValues_(NULL),
@@ -149,10 +139,6 @@ public:
         */
          deviceGammaMagSf_.allocate(numInternalFaces_,STORE_ON_GPU);           
          //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceGammaMagSf_),numInternalFaces_*sizeof(double)));
-         deviceLowerAddress_.allocate(numInternalFaces_,STORE_ON_GPU);
-         //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceLowerAddress_)   ,numInternalFaces_*sizeof(int)));
-         deviceUpperAddress_.allocate(numInternalFaces_,STORE_ON_GPU);
-         //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceUpperAddress_)   ,numInternalFaces_*sizeof(int)));
 
         
          //_CUDA(cudaMalloc(reinterpret_cast<void**>(&devicePatchAddr_)       ,numPatches_*sizeof(int*)));
@@ -163,11 +149,13 @@ public:
          devicePatchInternalCoeffs_.allocate_rows(numPatches_,STORE_ON_GPU);
          //_CUDA(cudaMalloc(reinterpret_cast<void**>(&devicePatchGammaSf_)  ,numPatches_*sizeof(double*)));
          devicePatchGammaSf_.allocate_rows(numPatches_,STORE_ON_GPU);
+         
+         //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceDiagonal_)    ,numCells_*sizeof(double)));
+         //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceSource_)  ,numCells_*sizeof(double)));
+         //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceLower_)   ,numInternalFaces_*sizeof(double)));
+         //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceUpper_)   ,numInternalFaces_*sizeof(double)));
+         deviceLdu.init(numCells_,numInternalFaces_,true);
          /*     
-         _CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceDiagonal_)    ,numCells_*sizeof(double)));
-         _CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceSource_)  ,numCells_*sizeof(double)));
-         _CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceLower_)   ,numInternalFaces_*sizeof(double)));
-         _CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceUpper_)   ,numInternalFaces_*sizeof(double)));
     
 
 
@@ -176,18 +164,12 @@ public:
         _CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceCsrColInd_) ,(numCells_+2*nIFaces)*sizeof(int)));
         _CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceCsrValues_) ,(numCells_+2*nIFaces)*sizeof(double)));
         */
-        
-        //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceCellVolumes_)  ,numCells_*sizeof(double)));
-        deviceCellVolumes_.allocate(numCells_,STORE_ON_GPU);
+        deviceMesh.init(mesh,true);
         
         //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceOldTemperature_) ,numCells_*sizeof(double)));
         deviceOldTemperature_.allocate(numCells_,STORE_ON_GPU);
 
-        //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceFaceAreas_)  ,numCells_*sizeof(double)));
-	    deviceFaceAreas_.allocate(numCells_,STORE_ON_GPU);
         
-        //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceDeltaCellCenters_)  ,numInternalFaces_*sizeof(double)));
-	    deviceDeltaCellCenters_.allocate(numInternalFaces_,STORE_ON_GPU);
 	
         //f2c.init();
         // Set initialization flag to true
@@ -285,38 +267,7 @@ public:
         }
         
         // Mesh data
-        const scalarList* listPtr       = &mesh.V();
-        const scalarList* deltaCPtr     = &mesh.deltaCoeffs();
-        const scalarList* magSfPtr      = &mesh.magSf();
-        const labelUList* ownerPtr      = &mesh.owner();
-        const labelUList* neighbourPtr  = &mesh.neighbour();
-
-        scalarList* blist           = const_cast<scalarList*>(listPtr);
-        scalarList* deltaClist      = const_cast<scalarList*>(deltaCPtr);
-        scalarList* magSflist       = const_cast<scalarList*>(magSfPtr);
-        labelUList* ownerlist       = const_cast<labelUList*>(ownerPtr);
-        labelUList* neighbourlist   = const_cast<labelUList*>(neighbourPtr);
-    
-        scalar *hostCellVolumes = &blist->first();             // Host: Cell volumes
-        scalar *hostDeltaCellCenters = &deltaClist->first();   // Host: Delta cell centers for each internal face
-        scalar *hostFaceAreas = &magSflist->first();           // Host: Lower address (owner) for each face
-        label *hostLowerAddress = &ownerlist->first();           // Host: Upper address (neighbour) for each face
-        label *hostUpperAddress = &neighbourlist->first();       // Host: Face surface area magnitude
-		
-        // _CUDA(cudaMemcpy(deviceCellVolumes_,        hostCellVolumes_,       nCells*sizeof(double),cudaMemcpyHostToDevice));
-        deviceCellVolumes_.copy(hostCellVolumes);
-        
-        // _CUDA(cudaMemcpy(deviceDeltaCellCenters_,    hostDeltaCellCenters_,   nIFaces*sizeof(double),cudaMemcpyHostToDevice));
-        deviceDeltaCellCenters_.copy(hostDeltaCellCenters);
-        // _CUDA(cudaMemcpy(deviceFaceAreas_,        hostFaceAreas_,       nIFaces*sizeof(double),cudaMemcpyHostToDevice));
-        deviceFaceAreas_.copy(hostFaceAreas);
-        
-        deviceLowerAddress_.copy(hostLowerAddress);
-        // _CUDA(cudaMemcpy(deviceLowerAddress_,     hostLowerAddress_,    nIFaces*sizeof(int),cudaMemcpyHostToDevice));
-        
-        deviceUpperAddress_.copy(hostUpperAddress);
-        // _CUDA(cudaMemcpy(deviceUpperAddress_,     hostUpperAddress_,    nIFaces*sizeof(int),cudaMemcpyHostToDevice));
-
+        deviceMesh.handle(mesh);
         // Update time step and gammaMagSf
         scalar rDeltaT = 1.0/mesh.time().deltaTValue();
         invDeltaT_ = static_cast<double>(rDeltaT);
@@ -388,22 +339,14 @@ public:
         devicePatchInternalCoeffs_.deallocate();
         // if (devicePatchGammaSf_)       _CUDA(cudaFree(devicePatchGammaSf_));
         devicePatchGammaSf_.deallocate();
-        // if (deviceCellVolumes_)               _CUDA(cudaFree(deviceCellVolumes_));
-        deviceCellVolumes_.deallocate();
         
         
         // if (deviceOldTemperature_)              _CUDA(cudaFree(deviceOldTemperature_));
         deviceOldTemperature_.deallocate();
         
-        // if (deviceDeltaCellCenters_)           _CUDA(cudaFree(deviceDeltaCellCenters_));
-        deviceDeltaCellCenters_.deallocate();
-        
-        // if (deviceFaceAreas_)               _CUDA(cudaFree(deviceFaceAreas_));
-        deviceFaceAreas_.deallocate();
         
         // if (deviceGammaMagSf_)         _CUDA(cudaFree(deviceGammaMagSf_));
-        // if (deviceLowerAddress_)            _CUDA(cudaFree(deviceLowerAddress_));
-        // if (deviceUpperAddress_)            _CUDA(cudaFree(deviceUpperAddress_));   
+        deviceMesh.deallocate();
         // //if (deviceCsrRowPtr_)            _CUDA(cudaFree(deviceCsrRowPtr_));      
         //if (deviceCsrColInd_)            _CUDA(cudaFree(deviceCsrColInd_));
         //if (deviceCsrValues_)            _CUDA(cudaFree(deviceCsrValues_)); 
@@ -415,12 +358,9 @@ public:
 
         // discKernelWrapper(  nCells,
         //                     nIFaces,
-        //                     deviceCellVolumes_,
         //                     deviceOldTemperature_,
-        //                     deviceDeltaCellCenters_,
         //                     deviceGammaMagSf_,
-        //                     deviceUpperAddress_,
-        //                     deviceLowerAddress_,
+        //                     deviceMesh,
         //                     numPatches_,
         //                     maxPatches,
         //                     devicePatchSizes_,
@@ -429,10 +369,7 @@ public:
         //                     devicePatchInternalCoeffs_,
         //                     devicePatchGammaSf_,
         //                     rDelgaG,
-        //                     deviceDiagonal_,
-        //                     deviceSource_,
-        //                     deviceUpper_,
-        //                     deviceLower_
+        //                        deviceLdu
         //                     );
     }
 

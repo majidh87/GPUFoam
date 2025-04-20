@@ -53,14 +53,15 @@ namespace Foam
 
             // Device arrays for linear system (matrix and source terms)
             // Diagonal elements of the matrix
-            Foam::scalar *diagonal_; 
+            Foam::scalar *diagonal; 
             // Source term array     
-            Foam::scalar *source_;
+            Foam::scalar *source;
             // Lower triangular elements of the matrix    
-            Foam::scalar *lower_;
+            Foam::scalar *lower;
             // Upper triangular elements of the matrix     
-            Foam::scalar *upper_;     
+            Foam::scalar *upper;     
 
+    private:
             // Number of cells in the mesh
             label numCells_;
 

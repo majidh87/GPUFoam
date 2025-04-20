@@ -49,33 +49,33 @@ namespace Foam
 
     class MeshFields
     {
-        // Private Data
-            
+        // Public Data
+        public:    
             // Cell volumes
-            HybridArray<Foam::scalar> cellVolumes_;
+            HybridArray<Foam::scalar> cellVolumes;
             
             // Delta cell centers for each internal face        
-            HybridArray<Foam::scalar> deltaCellCenters_; 
+            HybridArray<Foam::scalar> deltaCellCenters; 
             
             // Face surface area magnitude   
-            HybridArray<Foam::scalar> faceAreas_;        
+            HybridArray<Foam::scalar> faceAreas;        
             
             // Gamma multiplied by face area
             //depend DT Fields
             //HybridArray<Foam::scalar> gammaMagSf_;  
 
             // Lower address (owner) for each face
-            HybridArray<Foam::label> lowerAddress_;     
+            HybridArray<Foam::label> lowerAddress;     
             
             // Upper address (neighbour) for each face
-            HybridArray<Foam::label> upperAddress_;        
+            HybridArray<Foam::label> upperAddress;        
     
             // Number of cells in the mesh
             //label numCells_;
 
             // Number of internal faces in the mesh
             //label numInternalFaces_;
-
+        private:
 
             // Memory location (Host or GPU)
             bool onGPU_;
@@ -103,7 +103,7 @@ namespace Foam
             void deallocate();
 
             // Initialize the class with mesh data
-            void init(fvMesh& mesh);
+            void init(fvMesh& mesh,const bool onGPU);
 
             // Handle function to process mesh and field data
             void handle(fvMesh& mesh);

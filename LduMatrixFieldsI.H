@@ -49,10 +49,10 @@ LduMatrixFields::LduMatrixFields()
     numCells_(0),
     numInternalFaces_(0),
     onGPU_(false),
-    diagonal_(nullptr),
-    source_(nullptr),
-    lower_(nullptr),
-    upper_(nullptr)
+    diagonal(nullptr),
+    source(nullptr),
+    lower(nullptr),
+    upper(nullptr)
 {}
 
 LduMatrixFields::LduMatrixFields(const label numCells, const label numInternalFaces , const Switch onGPU)
@@ -60,10 +60,10 @@ LduMatrixFields::LduMatrixFields(const label numCells, const label numInternalFa
     numCells_(numCells),
     numInternalFaces_(numInternalFaces),
     onGPU_(onGPU),
-    diagonal_(nullptr),
-    source_(nullptr),
-    lower_(nullptr),
-    upper_(nullptr)
+    diagonal(nullptr),
+    source(nullptr),
+    lower(nullptr),
+    upper(nullptr)
 {
 
 }
@@ -80,86 +80,86 @@ void LduMatrixFields::allocate()
     if(onGPU_)
     {
 #ifdef CUDA_USE
-        _CUDA(cudaMalloc(reinterpret_cast<void**>(&diagonal_)    ,numCells_*sizeof(Foam::scalar)));
-        _CUDA(cudaMalloc(reinterpret_cast<void**>(&source_)  ,numCells_*sizeof(Foam::scalar)));
-        _CUDA(cudaMalloc(reinterpret_cast<void**>(&lower_)   ,numInternalFaces_*sizeof(Foam::scalar)));
-        _CUDA(cudaMalloc(reinterpret_cast<void**>(&upper_)   ,numInternalFaces_*sizeof(Foam::scalar)));
+        _CUDA(cudaMalloc(reinterpret_cast<void**>(&diagonal)    ,numCells_*sizeof(Foam::scalar)));
+        _CUDA(cudaMalloc(reinterpret_cast<void**>(&source)  ,numCells_*sizeof(Foam::scalar)));
+        _CUDA(cudaMalloc(reinterpret_cast<void**>(&lower)   ,numInternalFaces_*sizeof(Foam::scalar)));
+        _CUDA(cudaMalloc(reinterpret_cast<void**>(&upper)   ,numInternalFaces_*sizeof(Foam::scalar)));
 #endif
     }
     else
     {
-        diagonal_ = static_cast<Foam::scalar*>(std::malloc(numCells_ * sizeof(Foam::scalar)));
-        source_ = static_cast<Foam::scalar*>(std::malloc(numCells_ * sizeof(Foam::scalar)));
-        lower_ = static_cast<Foam::scalar*>(std::malloc(numInternalFaces_ * sizeof(Foam::scalar)));
-        upper_ = static_cast<Foam::scalar*>(std::malloc(numInternalFaces_ * sizeof(Foam::scalar)));
+        diagonal = static_cast<Foam::scalar*>(std::malloc(numCells_ * sizeof(Foam::scalar)));
+        source = static_cast<Foam::scalar*>(std::malloc(numCells_ * sizeof(Foam::scalar)));
+        lower = static_cast<Foam::scalar*>(std::malloc(numInternalFaces_ * sizeof(Foam::scalar)));
+        upper = static_cast<Foam::scalar*>(std::malloc(numInternalFaces_ * sizeof(Foam::scalar)));
     }
 }
 
 void LduMatrixFields::deallocate()
 {
-    if (diagonal_)
+    if (diagonal)
     {
         if (onGPU_)
         {
             // GPU deallocation (placeholder for CUDA/OpenCL code)
 #ifdef CUDA_USE
-            _CUDA(cudaFree(diagonal_)); 
+            _CUDA(cudaFree(diagonal)); 
 #endif
         }
         else
         {
             // Host deallocation using free
-            std::free(diagonal_);
+            std::free(diagonal);
         }
-        diagonal_ = nullptr;
+        diagonal = nullptr;
     }
-    if (source_)
+    if (source)
     {
         if (onGPU_)
         {
             // GPU deallocation (placeholder for CUDA/OpenCL code)
 #ifdef CUDA_USE
-            _CUDA(cudaFree(source_)); 
+            _CUDA(cudaFree(source)); 
 #endif
         }
         else
         {
             // Host deallocation using free
-            std::free(source_);
+            std::free(source);
         }
-        source_ = nullptr;
+        source = nullptr;
     }
-    if (lower_)
+    if (lower)
     {
         if (onGPU_)
         {
             // GPU deallocation (placeholder for CUDA/OpenCL code)
 #ifdef CUDA_USE
-            _CUDA(cudaFree(lower_)); 
+            _CUDA(cudaFree(lower)); 
 #endif
         }
         else
         {
             // Host deallocation using free
-            std::free(lower_);
+            std::free(lower);
         }
-        lower_ = nullptr;
+        lower = nullptr;
     }
-    if (upper_)
+    if (upper)
     {
         if (onGPU_)
         {
             // GPU deallocation (placeholder for CUDA/OpenCL code)
 #ifdef CUDA_USE
-            _CUDA(cudaFree(upper_)); 
+            _CUDA(cudaFree(upper)); 
 #endif
         }
         else
         {
             // Host deallocation using free
-            std::free(upper_);
+            std::free(upper);
         }
-        upper_ = nullptr;
+        upper = nullptr;
     }
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

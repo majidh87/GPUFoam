@@ -64,43 +64,49 @@ MeshFields::~MeshFields()
 void MeshFields::deallocate()
 {
     isInitialized_ = false;
-    cellVolumes_.deallocate();
+    cellVolumes.deallocate();
         
         
     
-    deltaCellCenters_.deallocate();
+    deltaCellCenters.deallocate();
     
-    faceAreas_.deallocate();
+    faceAreas.deallocate();
     
     //gammaMagSf_.deallocate();
     
-    lowerAddress_.deallocate();
-    upperAddress_.deallocate();
+    lowerAddress.deallocate();
+    upperAddress.deallocate();
 
 }
 
-void MeshFields::init(fvMesh& mesh)
+void MeshFields::init(fvMesh& mesh,const bool onGPU)
 {
+    onGPU_ = onGPU;
+
     Foam::label numCells          = static_cast<Foam::label>(mesh.cells().size());
     Foam::label numInternalFaces  = static_cast<Foam::label>(mesh.faceNeighbour().size());
 
-
+    STORE_TYPE st = STORE_ON_GPU;
+    if(!onGPU_)
+    {
+        st = STORE_ON_HOST;
+    }
     //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceCellVolumes_)  ,numCells_*sizeof(double)));
-    cellVolumes_.allocate(numCells,STORE_ON_GPU);
+    cellVolumes.allocate(numCells,st);
         
     //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceFaceAreas_)  ,numCells_*sizeof(double)));
-    faceAreas_.allocate(numCells,STORE_ON_GPU);
+    faceAreas.allocate(numCells,st);
         
     //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceDeltaCellCenters_)  ,numInternalFaces_*sizeof(double)));
-	deltaCellCenters_.allocate(numInternalFaces,STORE_ON_GPU);
+	deltaCellCenters.allocate(numInternalFaces,st);
 
     //gammaMagSf_.allocate(numInternalFaces,STORE_ON_GPU);           
     //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceGammaMagSf_),numInternalFaces_*sizeof(double)));
     
-    lowerAddress_.allocate(numInternalFaces,STORE_ON_GPU);
+    lowerAddress.allocate(numInternalFaces,st);
     //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceLowerAddress_)   ,numInternalFaces_*sizeof(int)));
     
-    upperAddress_.allocate(numInternalFaces,STORE_ON_GPU);
+    upperAddress.allocate(numInternalFaces,st);
     //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceUpperAddress_)   ,numInternalFaces_*sizeof(int)));
 
     isInitialized_ = true;            
@@ -137,15 +143,15 @@ void MeshFields::handle(fvMesh& mesh)
     label *hostLowerAddress = &ownerlist->first();           // Host: Upper address (neighbour) for each face
     label *hostUpperAddress = &neighbourlist->first();       // Host: Face surface area magnitude
 		
-    cellVolumes_.copy(hostCellVolumes);
+    cellVolumes.copy(hostCellVolumes);
         
-    deltaCellCenters_.copy(hostDeltaCellCenters);
+    deltaCellCenters.copy(hostDeltaCellCenters);
         
-    faceAreas_.copy(hostFaceAreas);
+    faceAreas.copy(hostFaceAreas);
         
-    lowerAddress_.copy(hostLowerAddress);
+    lowerAddress.copy(hostLowerAddress);
         
-    upperAddress_.copy(hostUpperAddress);
+    upperAddress.copy(hostUpperAddress);
 
     //surfaceScalarField gammaMagSf_ = sf_DT * mesh.magSf();
 
