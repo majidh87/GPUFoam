@@ -213,14 +213,18 @@ public:
             //hostPatchBoundaryCoeffs_[patchI] = static_cast<double*>(malloc(hostPatchSizes_[patchI]*sizeof(double)));
             hostPatchBoundaryCoeffs_.allocate_col(patchI,hostPatchSizes_[patchI]);
             
-            for (int i=0 ;i<hostPatchSizes_[patchI];i++)
+            /*for (int i=0 ;i<hostPatchSizes_[patchI];i++)
             {
                 //hostPatchInternalCoeffs_[patchI][i] = pF_IC_SF[i];
                 hostPatchInternalCoeffs_.set(patchI,i,pF_IC_SF[i]);
                 
                 //hostPatchBoundaryCoeffs_[patchI][i] = pF_BC_SF[i];
                 hostPatchBoundaryCoeffs_.set(patchI,i,pF_BC_SF[i]);
-            }
+            }*/
+			hostPatchInternalCoeffs_.copy_col(patchI,pF_IC_SF.data());
+			hostPatchBoundaryCoeffs_.copy_col(patchI,pF_BC_SF.data());
+			
+			
             //hostPatchGammaSf_[patchI] = &pfGammaSFlist->first();
             hostPatchGammaSf_.set(patchI,&pfGammaSFlist->first());
             

@@ -81,6 +81,10 @@ namespace Foam
             //- Construct with size and memory location
             LduMatrixFields(const label numCells, const label numInternalFaces , const Switch onGPU);
 
+            
+            //- set member values and call allocate
+            void init(const label numCells, const label numInternalFaces , const Switch onGPU);
+            
             //- Destructor
             ~LduMatrixFields();
 

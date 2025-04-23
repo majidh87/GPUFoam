@@ -162,6 +162,15 @@ void LduMatrixFields::deallocate()
         upper = nullptr;
     }
 }
+
+void LduMatrixFields::init(const label numCells, const label numInternalFaces , const Switch onGPU)
+
+{
+    numCells_ = numCells;
+    numInternalFaces_ = numInternalFaces;
+    onGPU_ = onGPU;
+	allocate();
+}
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
