@@ -58,6 +58,7 @@ Description
 #include "fvOptions.H"
 #include "simpleControl.H"
 #include "gpuFields.H"
+#include "MeshFields.H"
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main(int argc, char *argv[])
@@ -79,6 +80,7 @@ int main(int argc, char *argv[])
 
     simpleControl simple(mesh);
 
+
     #include "createFields.H"
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -92,6 +94,9 @@ int main(int argc, char *argv[])
      g.handle(mesh,DT,T);
 
 
+     Foam::MeshFields gpuMesh;
+     gpuMesh.handle(mesh);
+     
     while (simple.loop())
     {
         Info<< "Time = " << runTime.timeName() << nl << endl;

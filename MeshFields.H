@@ -103,7 +103,7 @@ namespace Foam
             void deallocate();
 
             // Initialize the class with mesh data
-            void init(fvMesh& mesh,const bool onGPU);
+            void init(fvMesh& mesh,const bool onGPU = true);
 
             // Handle function to process mesh and field data
             void handle(fvMesh& mesh);

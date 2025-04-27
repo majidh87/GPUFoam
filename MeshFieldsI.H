@@ -79,7 +79,7 @@ void MeshFields::deallocate()
 
 }
 
-void MeshFields::init(fvMesh& mesh,const bool onGPU)
+void MeshFields::init(fvMesh& mesh,const bool onGPU )
 {
     onGPU_ = onGPU;
 
@@ -117,11 +117,14 @@ void MeshFields::handle(fvMesh& mesh)
 {
     if (!isInitialized_)
     {
-         FatalErrorInFunction
+        init(mesh); 
+        /*
+        FatalErrorInFunction
             << "ERROR: handle is called before init "
             << endl
             << abort(FatalError);
             return;
+        */
     }
 
     // Mesh data
