@@ -91,7 +91,8 @@ int main(int argc, char *argv[])
 
      g.init(mesh);
     
-     g.handle(mesh,DT,T);
+     surfaceScalarField sf_DT = -fvc::interpolate(DT); // changed New
+     g.handle(mesh,sf_DT,T);
 
 
      Foam::MeshFields gpuMesh;
