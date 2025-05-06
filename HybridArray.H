@@ -44,11 +44,11 @@ SourceFiles
 #include "error.H"
 #include <cstdlib> // For malloc and free
 //#define __DOXYGEN_ONLY__	//temporary code to cuda not get compilation error
-#ifdef CUDA_USE
+//#define CUDA_USE
+//#ifdef CUDA_USE
 #include "cuda_error_handle.H"
-#endif
+//#endif
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-#undef CUDA_USE
 
 namespace Foam
 {

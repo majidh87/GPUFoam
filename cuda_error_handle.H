@@ -25,22 +25,26 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 \*---------------------------------------------------------------------------*/
+#include <cstdlib>
+#include <stdlib.h>
 #include "cuda_runtime_api.h"
 
 #ifndef CUDA__ERROR_HANDLE_H
 #define CUDA_ERROR_HANDLE_H
 
+#define CUDA_USE
+#ifdef CUDA_USE
 #define checkCudaErrors(call)                                      \
     {                                                             \
         cudaError_t err = call;                                    \
         if (err != cudaSuccess) {                                  \
             printf("CUDA error at %s %d: %s\n", __FILE__, __LINE__, \
                          cudaGetErrorString(err));                \
-            exit(EXIT_FAILURE);                                   \
+            std::exit(EXIT_FAILURE);                                   \
         }                                                         \
     }
 
  // Macro to wrap CUDA calls with error checking
 #define _CUDA(x) checkCudaErrors(x)
-
+#endif
 #endif
