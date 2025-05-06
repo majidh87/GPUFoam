@@ -155,19 +155,20 @@ void HybridMatrix<T>::allocate_rows(const label rows, const STORE_TYPE storeType
     else if(storeType_== STORE_ON_HOST || storeType_ == STORE_ON_HOST_GPU)
     {
         // Allocate host memory
-        /*data_ = static_cast<T**>(malloc(rows_*sizeof(T*)));
+        data_ = static_cast<T**>(malloc(rows_*sizeof(T*)));
         if(!data_)
         {
             FatalErrorInFunction
                 << "Host memory allocation failed"
                 << abort(FatalError);
-        }*/
+        }
     }
 
 }
 template<typename T>
 void HybridMatrix<T>::allocate_col(const label row, const label colSize)
 {
+    //printf("allocate_col start %d \n",colSize);
     cols_[row] = colSize;
     if(storeType_== STORE_ON_GPU || storeType_== STORE_ON_HOST_GPU)
     {
@@ -178,6 +179,7 @@ void HybridMatrix<T>::allocate_col(const label row, const label colSize)
     else if(storeType_== STORE_ON_HOST)
     {
 
+            //printf("before malloc in allocate_col %d \n",cols_[row]);
             data_[row] = static_cast<T*>(malloc(cols_[row]*sizeof(T)));
             if(!data_[row])
             {
