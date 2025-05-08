@@ -97,6 +97,13 @@ int main(int argc, char *argv[])
 
      Foam::MeshFields gpuMesh;
      gpuMesh.handle(mesh);
+
+    // Allocate host memory to hold the diagonal, source, and upper terms - testing
+    int numCells_ = mesh.cells().size();
+    int numInternalFaces_ = mesh.faceNeighbour().size();
+    double* h_diag = new double[numCells_];
+    double* h_source = new double[numCells_];
+    double* h_upper = new double[numInternalFaces_];
      
     while (simple.loop())
     {
@@ -104,15 +111,70 @@ int main(int argc, char *argv[])
 
         while (simple.correctNonOrthogonal())
         {
-            // fvScalarMatrix TEqn
-            // (
-            //     fvm::ddt(T) - fvm::laplacian(DT, T)
-            //  ==
-            //     fvOptions(T)
-            // );
 
-            g.discKernel();
+            
+            g.discKernel(h_diag, h_source, h_upper);
 
+             // Loop over and print each entry
+            for (int i = 0; i < numCells_; i++) {
+                Info << "GPU diag[" << i << "] = " << h_diag[i] <<" -- source["<< i<<"] = "<< h_source[i]<< endl;
+            }
+            // for (int i = 0; i < numInternalFaces_; i++) {
+            //     Info << "GPU upper[" << i << "] = " << h_upper[i]<< endl;
+            // }
+    
+            fvScalarMatrix TEqn
+            (
+                fvm::ddt(T) - fvm::laplacian(DT, T)
+             ==
+                fvOptions(T)
+            );
+            
+            scalarField& diag = TEqn.diag();
+            scalarField& source = TEqn.source();
+            const scalarField& upper = TEqn.upper();
+            const scalarField& lower = TEqn.lower();
+
+
+            // // correct diag and source with boundary conditions
+            // forAll(T.boundaryField(), patchi)
+            // {
+            //     const fvPatch& p = T.boundaryField()[patchi].patch();
+            //     const labelList& faceCells = p.faceCells();
+             
+            //     forAll(faceCells, i)
+            //     {
+            //         diag[faceCells[i]] += TEqn.internalCoeffs()[patchi][i];
+            //         source[faceCells[i]] += TEqn.boundaryCoeffs()[patchi][i];
+            //     }
+            // }
+
+            // const auto& internalCoeffs = TEqn.internalCoeffs();
+            // const auto& boundaryCoeffs = TEqn.boundaryCoeffs();
+
+            //Loop over and print each diagonal entry: 
+            for (label i = 0; i < diag.size(); i++) { 
+                Info << "OpenFOAM: diag[" << i << "] = " << diag[i] <<" -- source[" << i << "] = " << source[i] << endl; 
+                }
+
+            // for (label i = 0; i < upper.size(); i++) { 
+            //     Info << "OpenFOAM: upper[" << i << "] = " << upper[i] <<" -- lower[" << i << "] = " << lower[i] << endl; 
+            //     }
+
+            // for (label i = 0; i < internalCoeffs.size(); i++) { 
+            //     Info << "internalCoeffs[" << i << "] = " << internalCoeffs[i] <<"boundaryCoeffs[" << i << "] = " << boundaryCoeffs[i] << endl; 
+            //     }
+            double errorSumDiag = 0.0;
+            double errorSumSource = 0.0;
+            for (label i = 0; i < numCells_; i++) {
+                errorSumDiag += fabs(diag[i] - h_diag[i]);
+                errorSumSource += fabs(source[i] - h_source[i]);
+            }
+            double avgErrorDiag = errorSumDiag / numCells_;
+            double avgErrorSource = errorSumSource / numCells_;
+            
+            Info << "Average error Diag = " << avgErrorDiag << "  -- source = "<< avgErrorSource<< endl;
+           
             // fvOptions.constrain(TEqn);
             // TEqn.solve();
             // fvOptions.correct(T);
@@ -122,6 +184,10 @@ int main(int argc, char *argv[])
 
         runTime.printExecutionTime(Info);
     }
+    // Clean up host memory
+    delete[] h_diag;
+    delete[] h_source;
+    delete[] h_upper;
 
     Info<< "End\n" << endl;
 

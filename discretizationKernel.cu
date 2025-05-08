@@ -73,6 +73,7 @@ __global__ void boundaryKernel(int *pSize,        // Number of faces in each pat
     // Calculate the thread IDs for 2D grid
     int idx = blockIdx.x * blockDim.x + threadIdx.x;  // Thread ID in x-direction
     int idy = blockIdx.y * blockDim.y + threadIdx.y;  // Thread ID in y-direction
+    printf("pf_BC[0]: %p, pf_IC[0]: %p\n", pf_BC[0][0], pf_IC[0][0]);
 
     // Ensure the thread IDs are within bounds
     if (idx >= pSize[idy] || idy >= numberOfPatches)
@@ -123,13 +124,13 @@ void discKernelWrapper(int sizeDiag,              // Number of cells
     faceKernel<<<gridFace, blockSize>>>(delta, gamma,DT_surf, upperAddr, lowerAddr, d_upper, d_lower, d_diag, sizeFace);
 
     // // // Set block and grid sizes for boundaryKernel (2D kernel)
-    // dim3 blockBoundary(BSIZEX, BSIZEY, 1);  // 2D block size
-    // dim3 gridBoundary((int)ceil((float)(maxPatches) / blockBoundary.x),  // Grid size in x-direction
-    //                  (int)ceil((float)(numOfPatches) / blockBoundary.y), // Grid size in y-direction
-    //                  1);
+    dim3 blockBoundary(BSIZEX, BSIZEY, 1);  // 2D block size
+    dim3 gridBoundary((int)ceil((float)(maxPatches) / blockBoundary.x),  // Grid size in x-direction
+                     (int)ceil((float)(numOfPatches) / blockBoundary.y), // Grid size in y-direction
+                     1);
 
-    // // Launch boundaryKernel to handle boundary conditions
-    // boundaryKernel<<<gridBoundary, blockBoundary>>>(d_pSize, d_pAdrr, d_pf_BC, d_pf_IC, d_pf_GammaSf, d_diag, d_source, maxPatches, numOfPatches);
+       // Launch boundaryKernel to handle boundary conditions
+    boundaryKernel<<<gridBoundary, blockBoundary>>>(d_pSize, d_pAdrr, d_pf_BC, d_pf_IC, d_pf_GammaSf, d_diag, d_source, maxPatches, numOfPatches);
 
     // Optional: Debugging code to check the source terms (commented out)
     /*

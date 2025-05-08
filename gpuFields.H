@@ -214,7 +214,7 @@ public:
             hostPatchInternalCoeffs_.allocate_col(patchI,hostPatchSizes_[patchI]);
             
             
-	   //hostPatchBoundaryCoeffs_[patchI] = static_cast<double*>(malloc(hostPatchSizes_[patchI]*sizeof(double)));
+	        //hostPatchBoundaryCoeffs_[patchI] = static_cast<double*>(malloc(hostPatchSizes_[patchI]*sizeof(double)));
             hostPatchBoundaryCoeffs_.allocate_col(patchI,hostPatchSizes_[patchI]);
             
             /*for (int i=0 ;i<hostPatchSizes_[patchI];i++)
@@ -225,8 +225,8 @@ public:
                 //hostPatchBoundaryCoeffs_[patchI][i] = pF_BC_SF[i];
                 hostPatchBoundaryCoeffs_.set(patchI,i,pF_BC_SF[i]);
             }*/
-	    hostPatchInternalCoeffs_.copy_col(patchI,pF_IC_SF.data());
-	    hostPatchBoundaryCoeffs_.copy_col(patchI,pF_BC_SF.data());
+	        hostPatchInternalCoeffs_.copy_col(patchI,pF_IC_SF.data());
+	        hostPatchBoundaryCoeffs_.copy_col(patchI,pF_BC_SF.data());
 			
 			
             //hostPatchMagSf__[patchI] = &pfGammaSFlist->first();
@@ -373,19 +373,21 @@ public:
         //if (deviceCsrValues_)            _CUDA(cudaFree(deviceCsrValues_)); 
     } 
     // Function to call the discretization kernel (currently just a placeholder)
-    void discKernel()
-    {
+    void discKernel(double * h_diag,
+                    double * h_source,
+                    double * h_upper)
+        {
         printf("discKernel is called \n");
 
         discKernelWrapper(  numCells_,
                              numInternalFaces_,
-			     deviceMesh.cellVolumes.Data(),
+			                 deviceMesh.cellVolumes.Data(),
                              deviceOldTemperature_.Data(),
                              deviceSurfDT__.Data(),
-			     deviceMesh.deltaCellCenters.Data(),
-		             deviceMagSf__.Data(),
+			                 deviceMesh.deltaCellCenters.Data(),
+		                     deviceMagSf__.Data(),
                              deviceMesh.upperAddress.Data(),
-			     deviceMesh.lowerAddress.Data(),
+			                 deviceMesh.lowerAddress.Data(),
                              numPatches_,
                              maxPatchSize_,
                              devicePatchSizes_.Data(),
@@ -395,10 +397,14 @@ public:
                              deviceIntermediatePatchMagSf__.Data(),
                              invDeltaT_,
                              deviceLdu.diagonal,
-			     deviceLdu.source,
-			     deviceLdu.upper,
-			     deviceLdu.lower
+			                 deviceLdu.source,
+			                 deviceLdu.upper,
+			                 deviceLdu.lower
                              );
+                             
+                             h_diag = deviceLdu.diagonal;
+                             h_source = deviceLdu.source;
+                             h_upper = deviceLdu.upper;
     }
 
 

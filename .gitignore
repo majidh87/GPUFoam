@@ -4,6 +4,4 @@ Make
 createFields.H
 testCase
 Make
-discretizationKernel.cu
-discretizationKernel.h
 discretizationKernel.o
