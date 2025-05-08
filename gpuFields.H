@@ -375,9 +375,9 @@ public:
         //if (deviceCsrValues_)            _CUDA(cudaFree(deviceCsrValues_)); 
     } 
     // Function to call the discretization kernel (currently just a placeholder)
-    void discKernel(double * h_diag,
-                    double * h_source,
-                    double * h_upper)
+    void discKernel(double *& h_diag,
+                    double *& h_source,
+                    double *& h_upper)
         {
         printf("discKernel is called \n");
  //printf("pf_BC[0]: %p, pf_IC[0]: %p\n", (void*)devicePatchBoundaryCoeffs_.Data()[0], (void*)devicePatchInternalCoeffs_.Data()[0]);
