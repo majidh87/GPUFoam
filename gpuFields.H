@@ -380,11 +380,19 @@ public:
         printf("discKernel is called \n");
  //printf("pf_BC[0]: %p, pf_IC[0]: %p\n", (void*)devicePatchBoundaryCoeffs_.Data()[0], (void*)devicePatchInternalCoeffs_.Data()[0]);
         HybridArray<int> hostPatchSizes2;
-        hostPathSizes2.allocate(devicePatchSizes.size(),false);
-        hostPathSizes2.copy(devicePatchSizes_);
-        for (label i = 0; i < hostPathSizes2.size(); i++) 
+        hostPatchSizes2.allocate(devicePatchSizes.size(),false);
+        hostPatchSizes2.copy(devicePatchSizes_);
+        for (label i = 0; i < hostPatchSizes2.size(); i++) 
         { 
-            printf("hostPathSizes2 %d %d",i,hostPathSizes2[i]); 
+            printf("hostPathSizes2 %d %d\n",i,hostPatchSizes2[i]); 
+        }
+
+        HybridArray<int> hostPatchInternalCoeff2;
+        hostPatchInternalCoeff2.allocate(devicePatchInternalCoeffs_.cols(0),false);
+        hostPatchInternalCoeff2.copy(devicePatchInternalCoeffs_.Data()[0],true);
+        for (label i = 0; i < hostPatchInternalCoeff2.size(); i++) 
+        { 
+            printf("hostPatchInternalCoeff2 %d %d\n",i,hostPatchInternalCoeff2[i]); 
         }
 
 	discKernelWrapper(  numCells_,
