@@ -248,7 +248,8 @@ public:
             deviceIntermediatePatchMagSf__.allocate_col(i,hostPatchSizes_[i]);
         }
         
-        devicePatchSizes_.copy(hostPatchSizes_.Data());
+        printf("before devicePatchSizes_ copy \n");
+	devicePatchSizes_.copy(hostPatchSizes_.Data());
         /*
         instead of 
         _CUDA(cudaMemcpy(devicePatchSizes_      ,hostPatchSizes_, sizeof(int)*numPatches_, cudaMemcpyHostToDevice));
@@ -379,8 +380,10 @@ public:
                     double * h_upper)
         {
         printf("discKernel is called \n");
- printf("pf_BC[0]: %p, pf_IC[0]: %p\n", (void*)devicePatchBoundaryCoeffs_.Data()[0], (void*)devicePatchInternalCoeffs_.Data()[0]);
-        discKernelWrapper(  numCells_,
+ //printf("pf_BC[0]: %p, pf_IC[0]: %p\n", (void*)devicePatchBoundaryCoeffs_.Data()[0], (void*)devicePatchInternalCoeffs_.Data()[0]);
+        //HybridArray<int> hostPatchSizes2;
+        //hostPathSizes2.allocate(devicePatchSizes.size(),false);
+	discKernelWrapper(  numCells_,
                              numInternalFaces_,
 			                 deviceMesh.cellVolumes.Data(),
                              deviceOldTemperature_.Data(),

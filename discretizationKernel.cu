@@ -73,7 +73,7 @@ __global__ void boundaryKernel(int *pSize,        // Number of faces in each pat
     // Calculate the thread IDs for 2D grid
     int idx = blockIdx.x * blockDim.x + threadIdx.x;  // Thread ID in x-direction
     int idy = blockIdx.y * blockDim.y + threadIdx.y;  // Thread ID in y-direction
-    printf("pf_BC[0]: %f, pf_IC[0]: %f\n", pf_BC[0][0], pf_IC[0][0]);
+    printf("pf_BC[0]: %p, pf_IC[0]: %p\n", pf_BC[0], pf_IC[0]);
 
     // Ensure the thread IDs are within bounds
     if (idx >= pSize[idy] || idy >= numberOfPatches)
@@ -114,6 +114,7 @@ void discKernelWrapper(int sizeDiag,              // Number of cells
     // Compute grid size for cellKernel
     int gridCell = (int)ceil((float)(sizeDiag) / blockSize);
 
+    //printf("pf_BC[0]:%p , pf_IC[0]:%p \n",d_pf_BC[0],d_pf_IC[0]);
     // Launch cellKernel to compute diagonal and source terms
     cellKernel<<<gridCell, blockSize>>>(vcs, tot, rDelgaG, d_diag, d_source, sizeDiag);
 

@@ -86,7 +86,15 @@ void HybridArray<T>::allocate(const label size, const bool onGPU)
     if (onGPU_)
     {
 #ifdef CUDA_USE
-        _CUDA(cudaMalloc(reinterpret_cast<void**>(&data_), size_ * sizeof(T)));
+        if constexpr(std::is_same<T,int>::value)
+	{
+	  printf("allocation int array in cuda size_:%d\n",size_);
+	}
+	_CUDA(cudaMalloc(reinterpret_cast<void**>(&data_), size_ * sizeof(T)));
+        if constexpr(std::is_same<T,int>::value)
+	{
+	//	printf("data[0]:%d \n",data_[0]);
+	}
 #endif
         if (!data_)
         {
@@ -167,7 +175,7 @@ bool HybridArray<T>::onGPU() const
 }
 
 template<class T>
-T* HybridArray<T>::Data() const
+T* HybridArray<T>::Data() 
 {
     return data_;
 }
@@ -190,7 +198,16 @@ void HybridArray<T>::copy(const T* src)
     else
     {
 #ifdef CUDA_USE
-        _CUDA(cudaMemcpy(data_, src, size_*sizeof(T),cudaMemcpyHostToDevice));
+        printf("copy of hybrid array size_:%d sizeof(T):%d \n",size_,sizeof(T));
+	if constexpr(std::is_same<T,int>::value)
+	{
+		printf("src[0] %d \n",src[0]);
+	}
+	_CUDA(cudaMemcpy(data_, src, size_*sizeof(T),cudaMemcpyHostToDevice));
+	if constexpr(std::is_same<T,int>::value)
+	{
+	//	printf("data[0] %d \n",data_[0]);
+	}
 #endif
     }
 }

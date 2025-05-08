@@ -114,7 +114,7 @@ public:
         bool onGPU() const;
 
         //- Return the array data
-        T* Data() const;
+        T* Data();
 
         //- copy src buffer 
         void copy(const T* src);
