@@ -100,9 +100,9 @@ int main(int argc, char *argv[])
     // Allocate host memory to hold the diagonal, source, and upper terms - testing
     int numCells_ = mesh.cells().size();
     int numInternalFaces_ = mesh.faceNeighbour().size();
-    HybridArray<scalar> h_diag(false);
-    HybridArray<scalar> h_source(false);
-    HybridArray<scalar> h_upper(false);
+    HybridArray<scalar> h_diag(numCells_,false);
+    HybridArray<scalar> h_source(numCells_,false);
+    HybridArray<scalar> h_upper(numInternalFaces_,false);
     while (simple.loop())
     {
         Info<< "Time = " << runTime.timeName() << nl << endl;
