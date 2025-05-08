@@ -116,9 +116,9 @@ int main(int argc, char *argv[])
 
             Info<< "discKernel run is finished!"<<endl;
 
-	    h_diag.copy(g.deviceLdu.diagonal);
-            h_source.copy(g.deviceLdu.source);
-            h_upper.copy(g.deviceLdu.upper);
+	        h_diag.copy(g.deviceLdu.diagonal,true);
+            h_source.copy(g.deviceLdu.source,true);
+            h_upper.copy(g.deviceLdu.upper,true);
 
              // Loop over and print each entry
             

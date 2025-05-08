@@ -398,10 +398,10 @@ public:
                              devicePatchInternalCoeffs_.Data(),
                              deviceIntermediatePatchMagSf__.Data(),
                              invDeltaT_,
-                             deviceLdu.diagonal.Data(),
-			                 deviceLdu.source.Data(),
-			                 deviceLdu.upper.Data(),
-			                 deviceLdu.lower.Data()
+                             deviceLdu.diagonal,
+			                 deviceLdu.source,
+			                 deviceLdu.upper,
+			                 deviceLdu.lower
                              );
                              
     }

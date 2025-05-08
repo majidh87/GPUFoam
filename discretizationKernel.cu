@@ -134,10 +134,10 @@ void discKernelWrapper(int sizeDiag,              // Number of cells
     boundaryKernel<<<gridBoundary, blockBoundary>>>(d_pSize, d_pAdrr, d_pf_BC, d_pf_IC, d_pf_GammaSf, d_diag, d_source, maxPatches, numOfPatches);
 
     // Optional: Debugging code to check the source terms (commented out)
-    /*
+    
     double* hg_source = (double*)malloc((9) * sizeof(double));
     cudaMemcpy(hg_source, d_source, (9) * sizeof(double), cudaMemcpyDeviceToHost);
     for (int i = 0; i < 9; i++)
         printf("*******%f\n", hg_source[i]);
-    */
+    
 }
