@@ -378,7 +378,7 @@ public:
                     double * h_upper)
         {
         printf("discKernel is called \n");
-
+ printf("pf_BC[0]: %p, pf_IC[0]: %p\n", (void*)devicePatchBoundaryCoeffs_.Data()[0], (void*)devicePatchInternalCoeffs_.Data()[0]);
         discKernelWrapper(  numCells_,
                              numInternalFaces_,
 			                 deviceMesh.cellVolumes.Data(),

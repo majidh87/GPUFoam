@@ -81,7 +81,7 @@ void HybridMatrix<T>::allocate(const labelList& colsSize)
     deallocate();
 
     cols_ = colsSize;
-
+    rows_ = colsSize.size();
     if(storeType_== STORE_ON_GPU)
     {
         // Allocate GPU memory
@@ -144,6 +144,7 @@ void HybridMatrix<T>::allocate_rows(const label rows, const STORE_TYPE storeType
     // Deallocate existing memory
     deallocate();
     cols_.setSize(rows,0);
+    rows_ = rows;
     storeType_ = storeType;
     if(storeType_== STORE_ON_GPU)
     {

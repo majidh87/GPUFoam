@@ -73,7 +73,7 @@ __global__ void boundaryKernel(int *pSize,        // Number of faces in each pat
     // Calculate the thread IDs for 2D grid
     int idx = blockIdx.x * blockDim.x + threadIdx.x;  // Thread ID in x-direction
     int idy = blockIdx.y * blockDim.y + threadIdx.y;  // Thread ID in y-direction
-    printf("pf_BC[0]: %p, pf_IC[0]: %p\n", pf_BC[0][0], pf_IC[0][0]);
+    printf("pf_BC[0]: %f, pf_IC[0]: %f\n", pf_BC[0][0], pf_IC[0][0]);
 
     // Ensure the thread IDs are within bounds
     if (idx >= pSize[idy] || idy >= numberOfPatches)
@@ -133,10 +133,10 @@ void discKernelWrapper(int sizeDiag,              // Number of cells
     boundaryKernel<<<gridBoundary, blockBoundary>>>(d_pSize, d_pAdrr, d_pf_BC, d_pf_IC, d_pf_GammaSf, d_diag, d_source, maxPatches, numOfPatches);
 
     // Optional: Debugging code to check the source terms (commented out)
-    /*
+    
     double* hg_source = (double*)malloc((9) * sizeof(double));
     cudaMemcpy(hg_source, d_source, (9) * sizeof(double), cudaMemcpyDeviceToHost);
     for (int i = 0; i < 9; i++)
         printf("*******%f\n", hg_source[i]);
-    */
+    
 }

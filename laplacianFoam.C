@@ -116,9 +116,11 @@ int main(int argc, char *argv[])
             g.discKernel(h_diag, h_source, h_upper);
 
              // Loop over and print each entry
-            for (int i = 0; i < numCells_; i++) {
+            /*
+	    for (int i = 0; i < numCells_; i++) {
                 Info << "GPU diag[" << i << "] = " << h_diag[i] <<" -- source["<< i<<"] = "<< h_source[i]<< endl;
             }
+	    */
             // for (int i = 0; i < numInternalFaces_; i++) {
             //     Info << "GPU upper[" << i << "] = " << h_upper[i]<< endl;
             // }
@@ -153,10 +155,11 @@ int main(int argc, char *argv[])
             // const auto& boundaryCoeffs = TEqn.boundaryCoeffs();
 
             //Loop over and print each diagonal entry: 
-            for (label i = 0; i < diag.size(); i++) { 
+            /*
+	    for (label i = 0; i < diag.size(); i++) { 
                 Info << "OpenFOAM: diag[" << i << "] = " << diag[i] <<" -- source[" << i << "] = " << source[i] << endl; 
                 }
-
+	     */
             // for (label i = 0; i < upper.size(); i++) { 
             //     Info << "OpenFOAM: upper[" << i << "] = " << upper[i] <<" -- lower[" << i << "] = " << lower[i] << endl; 
             //     }
