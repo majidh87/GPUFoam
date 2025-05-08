@@ -48,22 +48,14 @@ LduMatrixFields::LduMatrixFields()
 :
     numCells_(0),
     numInternalFaces_(0),
-    onGPU_(false),
-    diagonal(nullptr),
-    source(nullptr),
-    lower(nullptr),
-    upper(nullptr)
-{}
+    onGPU_(false)
+    {}
 
 LduMatrixFields::LduMatrixFields(const label numCells, const label numInternalFaces , const Switch onGPU)
 :
     numCells_(numCells),
     numInternalFaces_(numInternalFaces),
-    onGPU_(onGPU),
-    diagonal(nullptr),
-    source(nullptr),
-    lower(nullptr),
-    upper(nullptr)
+    onGPU_(onGPU)
 {
 
 }
@@ -76,91 +68,19 @@ LduMatrixFields::~LduMatrixFields()
 void LduMatrixFields::allocate()
 {
     deallocate();
-
-    if(onGPU_)
-    {
-#ifdef CUDA_USE
-        _CUDA(cudaMalloc(reinterpret_cast<void**>(&diagonal)    ,numCells_*sizeof(Foam::scalar)));
-        _CUDA(cudaMalloc(reinterpret_cast<void**>(&source)  ,numCells_*sizeof(Foam::scalar)));
-        _CUDA(cudaMalloc(reinterpret_cast<void**>(&lower)   ,numInternalFaces_*sizeof(Foam::scalar)));
-        _CUDA(cudaMalloc(reinterpret_cast<void**>(&upper)   ,numInternalFaces_*sizeof(Foam::scalar)));
-#endif
-    }
-    else
-    {
-        diagonal = static_cast<Foam::scalar*>(std::malloc(numCells_ * sizeof(Foam::scalar)));
-        source = static_cast<Foam::scalar*>(std::malloc(numCells_ * sizeof(Foam::scalar)));
-        lower = static_cast<Foam::scalar*>(std::malloc(numInternalFaces_ * sizeof(Foam::scalar)));
-        upper = static_cast<Foam::scalar*>(std::malloc(numInternalFaces_ * sizeof(Foam::scalar)));
-    }
+    diagonal.allocate(numCells_,onGPU_);
+    source.allocate(numCells_,onGPU_);
+    lower.allocate(numInternalFaces_,onGPU_);
+    upper.allocate(numInternalFaces_,onGPU_)
 }
 
 void LduMatrixFields::deallocate()
 {
-    if (diagonal)
-    {
-        if (onGPU_)
-        {
-            // GPU deallocation (placeholder for CUDA/OpenCL code)
-#ifdef CUDA_USE
-            _CUDA(cudaFree(diagonal)); 
-#endif
-        }
-        else
-        {
-            // Host deallocation using free
-            std::free(diagonal);
-        }
-        diagonal = nullptr;
-    }
-    if (source)
-    {
-        if (onGPU_)
-        {
-            // GPU deallocation (placeholder for CUDA/OpenCL code)
-#ifdef CUDA_USE
-            _CUDA(cudaFree(source)); 
-#endif
-        }
-        else
-        {
-            // Host deallocation using free
-            std::free(source);
-        }
-        source = nullptr;
-    }
-    if (lower)
-    {
-        if (onGPU_)
-        {
-            // GPU deallocation (placeholder for CUDA/OpenCL code)
-#ifdef CUDA_USE
-            _CUDA(cudaFree(lower)); 
-#endif
-        }
-        else
-        {
-            // Host deallocation using free
-            std::free(lower);
-        }
-        lower = nullptr;
-    }
-    if (upper)
-    {
-        if (onGPU_)
-        {
-            // GPU deallocation (placeholder for CUDA/OpenCL code)
-#ifdef CUDA_USE
-            _CUDA(cudaFree(upper)); 
-#endif
-        }
-        else
-        {
-            // Host deallocation using free
-            std::free(upper);
-        }
-        upper = nullptr;
-    }
+    diagonal.deallocate();
+    source.deallocate();
+    upper.deallocate();
+    lower.deallocate();
+
 }
 
 void LduMatrixFields::init(const label numCells, const label numInternalFaces , const Switch onGPU)

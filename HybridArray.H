@@ -65,7 +65,7 @@ class HybridArray
         T* data_;
 
         // Memory location (Host or GPU)
-        bool onGPU_;
+        Switch onGPU_;
 
 public:
 
@@ -74,8 +74,9 @@ public:
         //- Default constructor
         HybridArray();
 
+        HybridArray(const Switch onGPU);
         //- Construct with size and memory location
-        HybridArray(const label size, const bool onGPU = false);
+        HybridArray(const label size, const Switch onGPU = false);
 
         //- Destructor
         ~HybridArray();
@@ -96,7 +97,7 @@ public:
     // Member Functions
 
         //- Allocate memory
-        void allocate(const label size, const bool onGPU = false);
+        void allocate(const label size, const Switch onGPU = false);
 
         //- Deallocate memory
         void deallocate();
@@ -117,10 +118,14 @@ public:
         T* Data();
 
         //- copy src buffer 
-        void copy(const T* src);
+        void copy(const T* src , const Switch srcOnGPU = false);
         
+        template<class U>
+        void copy(HybridArray<U>& rhs);
         //- set an special element of array
         void set(const label i, T value);
+
+
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

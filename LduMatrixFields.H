@@ -38,6 +38,7 @@ SourceFiles
 
 #include "label.H"
 #include "scalar.H"
+#include "HybridArray.H"
 
 #ifdef CUDA_USE
 #include "cuda_error_handle.H"
@@ -53,13 +54,13 @@ namespace Foam
 
             // Device arrays for linear system (matrix and source terms)
             // Diagonal elements of the matrix
-            Foam::scalar *diagonal; 
+            HybridArray<Foam::scalar> diagonal; 
             // Source term array     
-            Foam::scalar *source;
+            HybridArray<Foam::scalar> source;
             // Lower triangular elements of the matrix    
-            Foam::scalar *lower;
+            HybridArray<Foam::scalar> lower;
             // Upper triangular elements of the matrix     
-            Foam::scalar *upper;     
+            HybridArray<Foam::scalar> upper;     
 
     private:
             // Number of cells in the mesh

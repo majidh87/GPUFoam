@@ -53,6 +53,14 @@ HybridArray<T>::HybridArray()
 {}
 
 template<class T>
+HybridArray<T>::HybridArray(const Switch onGPU)
+:
+size_(0),
+data_(nullptr),
+onGPU_(onGPU)
+{}
+
+template<class T>
 HybridArray<T>::HybridArray(const label size, const bool onGPU)
 :
     size_(size),
@@ -69,7 +77,7 @@ HybridArray<T>::~HybridArray()
 }
 
 template<class T>
-void HybridArray<T>::allocate(const label size, const bool onGPU)
+void HybridArray<T>::allocate(const label size, const Switch onGPU)
 {
     if (size <= 0)
     {
@@ -182,7 +190,7 @@ T* HybridArray<T>::Data()
 
 
 template<class T>
-void HybridArray<T>::copy(const T* src)
+void HybridArray<T>::copy(const T* src,const Switch srcOnGPU = false)
 {
     if (!src)
     {
@@ -190,25 +198,29 @@ void HybridArray<T>::copy(const T* src)
             << "Source pointer is null."
             << abort(FatalError);
     }
-    if(!onGPU_)
+    if(!onGPU_ && !srcOnGPU)
     {
         // Copy data from external pointer to Host memory
         std::memcpy(data_, src, size_ * sizeof(T));
     }
-    else
+    else if(onGPU_ && !srcOnGPU)
     {
 #ifdef CUDA_USE
         printf("copy of hybrid array size_:%d sizeof(T):%d \n",size_,sizeof(T));
-	if constexpr(std::is_same<T,int>::value)
-	{
-		printf("src[0] %d \n",src[0]);
-	}
-	_CUDA(cudaMemcpy(data_, src, size_*sizeof(T),cudaMemcpyHostToDevice));
-	if constexpr(std::is_same<T,int>::value)
-	{
-	//	printf("data[0] %d \n",data_[0]);
-	}
+        if constexpr(std::is_same<T,int>::value)
+        {
+            printf("src[0] %d \n",src[0]);
+        }
+        _CUDA(cudaMemcpy(data_, src, size_*sizeof(T),cudaMemcpyHostToDevice));
+        if constexpr(std::is_same<T,int>::value)
+        {
+        //	printf("data[0] %d \n",data_[0]);
+        }
 #endif
+    }
+    else if(!onGPU_ && srcOnGPU)
+    {
+        _CUDA(cudaMemcpy(data_, src, size_ * sizeof(T), cudaMemcpyDeviceToHost));
     }
 }
 
@@ -225,6 +237,25 @@ void HybridArray<T>::set(const label i, T value)
                 << "array index out of bounds"
                 << abort(FatalError);
         }
+}
+
+template<typename T>
+template<class U>
+void HybridArray<T>::copy(HybridArray<U>& rhs)
+{
+    if constexpr(std::is_same<T,U>::value)
+    {
+
+    allocate(rhs.size(),onGPU_);
+    copy(rhs.Data(),rhs.onGPU());    
+    }
+    else
+    {
+            FatalErrorIn("HybridArray<T>::copy")
+                << "T and U template type is not equal."
+                << abort(FatalError);
+    
+    }
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
