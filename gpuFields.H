@@ -43,13 +43,13 @@ class gpuFields {
     // Device arrays for patch-related data
     HybridArray<Foam::label> devicePatchSizes_;        // Device: Number of cells adjacent to the faces of each patch
     
-    HybridMatrix<Foam::label> devicePatchAddr_;      // Device: Indices of cells adjacent to the faces of each patch
+    HybridArray<Foam::label *> devicePatchAddr_;      // Device: Indices of cells adjacent to the faces of each patch
     HybridMatrix<Foam::label> deviceIntermediatePatchAddr_;   // Intermediate host array for device data
-    HybridMatrix<Foam::scalar> devicePatchBoundaryCoeffs_;    // Device: Boundary coefficients for gradient calculation
+    HybridArray<Foam::scalar *> devicePatchBoundaryCoeffs_;    // Device: Boundary coefficients for gradient calculation
     HybridMatrix<Foam::scalar> deviceIntermediatePatchBoundaryCoeffs_; // Intermediate host array for device data
-    HybridMatrix<Foam::scalar> devicePatchInternalCoeffs_;    // Device: Internal coefficients for gradient calculation
+    HybridArray<Foam::scalar *> devicePatchInternalCoeffs_;    // Device: Internal coefficients for gradient calculation
     HybridMatrix<Foam::scalar> deviceIntermediatePatchInternalCoeffs_; // Intermediate host array for device data
-    HybridMatrix<Foam::scalar> devicePatchMagSf__; // Device: Patch field _ mag of face area
+    HybridArray<Foam::scalar *> devicePatchMagSf__; // Device: Patch field _ mag of face area
 
     HybridMatrix<Foam::scalar> deviceIntermediatePatchMagSf__; // Intermediate host array for device data
 
@@ -145,13 +145,13 @@ public:
 
         
          //_CUDA(cudaMalloc(reinterpret_cast<void**>(&devicePatchAddr_)       ,numPatches_*sizeof(int*)));
-         devicePatchAddr_.allocate_rows(numPatches_,STORE_ON_GPU);
+         devicePatchAddr_.allocate(numPatches_,true);
          //_CUDA(cudaMalloc(reinterpret_cast<void**>(&devicePatchBoundaryCoeffs_)       ,numPatches_*sizeof(double*)));
-         devicePatchBoundaryCoeffs_.allocate_rows(numPatches_,STORE_ON_GPU);
+         devicePatchBoundaryCoeffs_.allocate(numPatches_,true);
          //_CUDA(cudaMalloc(reinterpret_cast<void**>(&devicePatchInternalCoeffs_)       ,numPatches_*sizeof(double*)));
-         devicePatchInternalCoeffs_.allocate_rows(numPatches_,STORE_ON_GPU);
+         devicePatchInternalCoeffs_.allocate(numPatches_,true);
          //_CUDA(cudaMalloc(reinterpret_cast<void**>(&devicePatchMagSf__)  ,numPatches_*sizeof(double*)));
-         devicePatchMagSf__.allocate_rows(numPatches_,STORE_ON_GPU);
+         devicePatchMagSf__.allocate(numPatches_,true);
          
          //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceDiagonal_)    ,numCells_*sizeof(double)));
          //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceSource_)  ,numCells_*sizeof(double)));
@@ -257,11 +257,14 @@ public:
         //???? MN
         // _CUDA(cudaMemcpy(devicePatchAddr_      ,deviceIntermediatePatchAddr_, sizeof(int*)*numPatches_, cudaMemcpyHostToDevice));
         //devicePatchAddr_.
-
+        devicePatchAddr_.copy(deviceIntermediatePatchAddr_.Data());
         // _CUDA(cudaMemcpy(devicePatchBoundaryCoeffs_      ,deviceIntermediatePatchBoundaryCoeffs_, sizeof(double*)*numPatches_, cudaMemcpyHostToDevice));
+        devicePatchBoundaryCoeffs_.copy(deviceIntermediatePatchBoundaryCoeffs_.Data());
         // _CUDA(cudaMemcpy(devicePatchInternalCoeffs_      ,deviceIntermediatePatchInternalCoeffs_, sizeof(double*)*numPatches_, cudaMemcpyHostToDevice));
+        devicePatchInternalCoeffs_.copy(deviceIntermediatePatchInternalCoeffs_.Data());
         // _CUDA(cudaMemcpy(devicePatchMagSf__ ,deviceIntermediatePatchMagSf__, sizeof(double*)*numPatches_, cudaMemcpyHostToDevice));
-
+        devicePatchMagSf__.copy(deviceIntermediatePatchMagSf__.Data());
+        
          for( int i=0; i<numPatches_; i++ )
          {
             //     _CUDA(cudaMemcpy(deviceIntermediatePatchAddr_[i]        ,h_pAdrr[i], hostPatchSizes_[i]*sizeof(int), cudaMemcpyHostToDevice));
