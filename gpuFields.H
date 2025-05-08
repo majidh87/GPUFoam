@@ -254,16 +254,6 @@ public:
         _CUDA(cudaMemcpy(devicePatchSizes_      ,hostPatchSizes_, sizeof(int)*numPatches_, cudaMemcpyHostToDevice));
         */
         
-        //???? MN
-        // _CUDA(cudaMemcpy(devicePatchAddr_      ,deviceIntermediatePatchAddr_, sizeof(int*)*numPatches_, cudaMemcpyHostToDevice));
-        //devicePatchAddr_.
-        devicePatchAddr_.copy(deviceIntermediatePatchAddr_.Data());
-        // _CUDA(cudaMemcpy(devicePatchBoundaryCoeffs_      ,deviceIntermediatePatchBoundaryCoeffs_, sizeof(double*)*numPatches_, cudaMemcpyHostToDevice));
-        devicePatchBoundaryCoeffs_.copy(deviceIntermediatePatchBoundaryCoeffs_.Data());
-        // _CUDA(cudaMemcpy(devicePatchInternalCoeffs_      ,deviceIntermediatePatchInternalCoeffs_, sizeof(double*)*numPatches_, cudaMemcpyHostToDevice));
-        devicePatchInternalCoeffs_.copy(deviceIntermediatePatchInternalCoeffs_.Data());
-        // _CUDA(cudaMemcpy(devicePatchMagSf__ ,deviceIntermediatePatchMagSf__, sizeof(double*)*numPatches_, cudaMemcpyHostToDevice));
-        devicePatchMagSf__.copy(deviceIntermediatePatchMagSf__.Data());
         
          for( int i=0; i<numPatches_; i++ )
          {
@@ -277,6 +267,17 @@ public:
             deviceIntermediatePatchMagSf__.copy_col(i,hostPatchMagSf__[i]);
         }
         
+        //???? MN
+        // _CUDA(cudaMemcpy(devicePatchAddr_      ,deviceIntermediatePatchAddr_, sizeof(int*)*numPatches_, cudaMemcpyHostToDevice));
+        //devicePatchAddr_.
+        devicePatchAddr_.copy(deviceIntermediatePatchAddr_.Data());
+        // _CUDA(cudaMemcpy(devicePatchBoundaryCoeffs_      ,deviceIntermediatePatchBoundaryCoeffs_, sizeof(double*)*numPatches_, cudaMemcpyHostToDevice));
+        devicePatchBoundaryCoeffs_.copy(deviceIntermediatePatchBoundaryCoeffs_.Data());
+        // _CUDA(cudaMemcpy(devicePatchInternalCoeffs_      ,deviceIntermediatePatchInternalCoeffs_, sizeof(double*)*numPatches_, cudaMemcpyHostToDevice));
+        devicePatchInternalCoeffs_.copy(deviceIntermediatePatchInternalCoeffs_.Data());
+        // _CUDA(cudaMemcpy(devicePatchMagSf__ ,deviceIntermediatePatchMagSf__, sizeof(double*)*numPatches_, cudaMemcpyHostToDevice));
+        devicePatchMagSf__.copy(deviceIntermediatePatchMagSf__.Data());
+
         // Mesh data
         ////deviceMesh.handle(mesh);
         
