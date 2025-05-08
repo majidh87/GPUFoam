@@ -389,10 +389,13 @@ public:
 
         HybridArray<scalar> hostPatchInternalCoeff2;
         hostPatchInternalCoeff2.allocate(deviceIntermediatePatchInternalCoeffs_.cols(0),false);
-        hostPatchInternalCoeff2.copy(devicePatchInternalCoeffs_.Data()[0],true);
-        for (label i = 0; i < hostPatchInternalCoeff2.size(); i++) 
+        printf("cols[0]:%d \n",deviceIntermediatePatchInternalCoeffs_.cols(0));
+	hostPatchInternalCoeff2.copy(deviceIntermediatePatchInternalCoeffs_.Data()[0],true);
+        //not accessible
+	//hostPatchInternalCoeff2.copy(devicePatchInternalCoeffs_.Data()[0],true);
+	for (label i = 0; i < hostPatchInternalCoeff2.size(); i++) 
         { 
-            printf("hostPatchInternalCoeff2 %d %d\n",i,hostPatchInternalCoeff2[i]); 
+            printf("hostPatchInternalCoeff2 %d %f %f\n",i,hostPatchInternalCoeff2[i],hostPatchInternalCoeffs_.Data()[0][i]); 
         }
 
 	discKernelWrapper(  numCells_,
