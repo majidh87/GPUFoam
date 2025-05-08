@@ -95,15 +95,14 @@ int main(int argc, char *argv[])
      g.handle(mesh,sf_DT,T);
 
 
-     Foam::MeshFields gpuMesh;
-     gpuMesh.handle(mesh);
+    
 
     // Allocate host memory to hold the diagonal, source, and upper terms - testing
     int numCells_ = mesh.cells().size();
     int numInternalFaces_ = mesh.faceNeighbour().size();
-    HybridArray<scalar> h_diag;
-    HybridArray<scalar> h_source;
-    HybridArray<scalar> h_upper;
+    HybridArray<scalar> h_diag(false);
+    HybridArray<scalar> h_source(false);
+    HybridArray<scalar> h_upper(false);
     while (simple.loop())
     {
         Info<< "Time = " << runTime.timeName() << nl << endl;
@@ -111,9 +110,13 @@ int main(int argc, char *argv[])
         while (simple.correctNonOrthogonal())
         {
 
-            
+            printf("discKernel before\n");
             g.discKernel();
-            h_diag.copy(g.deviceLdu.diagonal);
+	    printf("discKernel finished \n");
+
+            Info<< "discKernel run is finished!"<<endl;
+
+	    h_diag.copy(g.deviceLdu.diagonal);
             h_source.copy(g.deviceLdu.source);
             h_upper.copy(g.deviceLdu.upper);
 
@@ -193,9 +196,9 @@ int main(int argc, char *argv[])
         runTime.printExecutionTime(Info);
     }
     // Clean up host memory
-    delete[] h_diag;
-    delete[] h_source;
-    delete[] h_upper;
+    h_diag.deallocate();
+    h_source.deallocate();
+    h_upper.deallocate();
 
     Info<< "End\n" << endl;
 

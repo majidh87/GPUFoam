@@ -71,7 +71,7 @@ void LduMatrixFields::allocate()
     diagonal.allocate(numCells_,onGPU_);
     source.allocate(numCells_,onGPU_);
     lower.allocate(numInternalFaces_,onGPU_);
-    upper.allocate(numInternalFaces_,onGPU_)
+    upper.allocate(numInternalFaces_,onGPU_);
 }
 
 void LduMatrixFields::deallocate()
