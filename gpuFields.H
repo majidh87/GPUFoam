@@ -380,15 +380,15 @@ public:
         printf("discKernel is called \n");
  //printf("pf_BC[0]: %p, pf_IC[0]: %p\n", (void*)devicePatchBoundaryCoeffs_.Data()[0], (void*)devicePatchInternalCoeffs_.Data()[0]);
         HybridArray<int> hostPatchSizes2;
-        hostPatchSizes2.allocate(devicePatchSizes.size(),false);
+        hostPatchSizes2.allocate(devicePatchSizes_.size(),false);
         hostPatchSizes2.copy(devicePatchSizes_);
         for (label i = 0; i < hostPatchSizes2.size(); i++) 
         { 
             printf("hostPathSizes2 %d %d\n",i,hostPatchSizes2[i]); 
         }
 
-        HybridArray<int> hostPatchInternalCoeff2;
-        hostPatchInternalCoeff2.allocate(devicePatchInternalCoeffs_.cols(0),false);
+        HybridArray<scalar> hostPatchInternalCoeff2;
+        hostPatchInternalCoeff2.allocate(deviceIntermediatePatchInternalCoeffs_.cols(0),false);
         hostPatchInternalCoeff2.copy(devicePatchInternalCoeffs_.Data()[0],true);
         for (label i = 0; i < hostPatchInternalCoeff2.size(); i++) 
         { 
@@ -410,7 +410,7 @@ public:
                              devicePatchAddr_.Data(),
                              devicePatchBoundaryCoeffs_.Data(),
                              devicePatchInternalCoeffs_.Data(),
-                             deviceIntermediatePatchMagSf__.Data(),
+                             devicePatchMagSf__.Data(),
                              invDeltaT_,
                              deviceLdu.diagonal,
 			                 deviceLdu.source,
