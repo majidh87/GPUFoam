@@ -96,7 +96,7 @@ void HybridArray<T>::allocate(const label size, const Switch onGPU)
 #ifdef CUDA_USE
         if constexpr(std::is_same<T,int>::value)
 	{
-	  printf("allocation int array in cuda size_:%d\n",size_);
+	  //printf("allocation int array in cuda size_:%d\n",size_);
 	}
 	_CUDA(cudaMalloc(reinterpret_cast<void**>(&data_), size_ * sizeof(T)));
         if constexpr(std::is_same<T,int>::value)
@@ -206,10 +206,10 @@ void HybridArray<T>::copy(const T* src,const Switch srcOnGPU)
     else if(onGPU_ && !srcOnGPU)
     {
 #ifdef CUDA_USE
-        printf("copy of hybrid array size_:%d sizeof(T):%d \n",size_,sizeof(T));
+        //printf("copy of hybrid array size_:%d sizeof(T):%d \n",size_,sizeof(T));
         if constexpr(std::is_same<T,int>::value)
         {
-            printf("src[0] %d \n",src[0]);
+            //printf("src[0] %d \n",src[0]);
         }
         _CUDA(cudaMemcpy(data_, src, size_*sizeof(T),cudaMemcpyHostToDevice));
         if constexpr(std::is_same<T,int>::value)

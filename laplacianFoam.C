@@ -116,6 +116,9 @@ int main(int argc, char *argv[])
 
             Info<< "discKernel run is finished!"<<endl;
 
+            std::cout << "Press any key to continue...";
+            std::cin.get();  // Waits for a character input including Enter
+
 	        h_diag.copy(g.deviceLdu.diagonal,true);
             h_source.copy(g.deviceLdu.source,true);
             h_upper.copy(g.deviceLdu.upper,true);
