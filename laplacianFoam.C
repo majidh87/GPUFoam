@@ -103,6 +103,7 @@ int main(int argc, char *argv[])
     HybridArray<scalar> h_diag(numCells_,false);
     HybridArray<scalar> h_source(numCells_,false);
     HybridArray<scalar> h_upper(numInternalFaces_,false);
+    HybridArray<scalar> h_lower(numInternalFaces_,false);
     while (simple.loop())
     {
         Info<< "Time = " << runTime.timeName() << nl << endl;
@@ -112,30 +113,20 @@ int main(int argc, char *argv[])
 
             printf("discKernel before\n");
             g.discKernel();
-	    printf("discKernel finished \n");
-
+	   
             Info<< "discKernel run is finished!"<<endl;
 
-            std::cout << "Press any key to continue...";
-            std::cin.get();  // Waits for a character input including Enter
+            // std::cout << "Press any key to continue...";
+            // std::cin.get();  // Waits for a character input including Enter
 
 	        h_diag.copy(g.deviceLdu.diagonal,true);
             h_source.copy(g.deviceLdu.source,true);
             h_upper.copy(g.deviceLdu.upper,true);
-
-             // Loop over and print each entry
-            
-	        for (int i = 0; i < numCells_; i++) {
-                Info << "GPU diag[" << i << "] = " << h_diag[i] <<" -- source["<< i<<"] = "<< h_source[i]<< endl;
-            }
+            h_lower.copy(g.deviceLdu.lower,true);
 	    
-            std::cout << "Press any key to continue...";
-            std::cin.get();  // Waits for a character input including Enter
+            // std::cout << "Press any key to continue...";
+            // std::cin.get();  // Waits for a character input including Enter
 
-            // for (int i = 0; i < numInternalFaces_; i++) {
-            //     Info << "GPU upper[" << i << "] = " << h_upper[i]<< endl;
-            // }
-    
             fvScalarMatrix TEqn
             (
                 fvm::ddt(T) - fvm::laplacian(DT, T)
@@ -149,27 +140,27 @@ int main(int argc, char *argv[])
             const scalarField& lower = TEqn.lower();
 
 
-            // // correct diag and source with boundary conditions
-            // forAll(T.boundaryField(), patchi)
-            // {
-            //     const fvPatch& p = T.boundaryField()[patchi].patch();
-            //     const labelList& faceCells = p.faceCells();
+            // correct diag and source with boundary conditions
+            forAll(T.boundaryField(), patchi)
+            {
+                const fvPatch& p = T.boundaryField()[patchi].patch();
+                const labelList& faceCells = p.faceCells();
              
-            //     forAll(faceCells, i)
-            //     {
-            //         diag[faceCells[i]] += TEqn.internalCoeffs()[patchi][i];
-            //         source[faceCells[i]] += TEqn.boundaryCoeffs()[patchi][i];
-            //     }
-            // }
+                forAll(faceCells, i)
+                {
+                    diag[faceCells[i]] += TEqn.internalCoeffs()[patchi][i];
+                    source[faceCells[i]] += TEqn.boundaryCoeffs()[patchi][i];
+                }
+            }
 
             // const auto& internalCoeffs = TEqn.internalCoeffs();
             // const auto& boundaryCoeffs = TEqn.boundaryCoeffs();
 
             //Loop over and print each diagonal entry: 
             
-	        for (label i = 0; i < diag.size(); i++) { 
-                Info << "OpenFOAM: diag[" << i << "] = " << diag[i] <<" -- source[" << i << "] = " << source[i] << endl; 
-                }
+	        // for (label i = 0; i < diag.size(); i++) { 
+            //     Info << "OpenFOAM: diag[" << i << "] = " << diag[i] <<" -- source[" << i << "] = " << source[i] << endl; 
+            //     }
 	     
             // for (label i = 0; i < upper.size(); i++) { 
             //     Info << "OpenFOAM: upper[" << i << "] = " << upper[i] <<" -- lower[" << i << "] = " << lower[i] << endl; 
@@ -178,16 +169,47 @@ int main(int argc, char *argv[])
             // for (label i = 0; i < internalCoeffs.size(); i++) { 
             //     Info << "internalCoeffs[" << i << "] = " << internalCoeffs[i] <<"boundaryCoeffs[" << i << "] = " << boundaryCoeffs[i] << endl; 
             //     }
+
+            for (label i = 0; i < numCells_; i++) {
+                scalar diff = fabs(diag[i] - h_diag[i]);
+                scalar diff2 = fabs(source[i] - h_source[i]);
+                if (diff > 1e-6) {
+                    Info << "diag error = OpenFOAM: diag[" << i << "] = " << diag[i] <<" -- GPU source[" << i << "] = " << h_diag[i] << endl;
+                }
+                if (diff2 > 1e-6) {
+                    Info << "source error = OpenFOAM: source[" << i << "] = " << source[i] <<" -- GPU diag[" << i << "] = " << h_source[i] << endl;
+                }
+            }
+
+            for (label i = 0; i < numInternalFaces_; i++) {
+                scalar diff = fabs(upper[i] - h_upper[i]);
+                scalar diff2 = fabs(lower[i] - h_lower[i]);
+                if (diff > 1e-6) {
+                    Info << "upper error = OpenFOAM: upper[" << i << "] = " << upper[i] <<" -- GPU upper[" << i << "] = " << h_upper[i] << endl;
+                } 
+                if (diff2 > 1e-6) {
+                    Info << "lower error = OpenFOAM: lower[" << i << "] = " << lower[i] <<" -- GPU lower[" << i << "] = " << h_lower[i] << endl;
+                }
+            }
+
             double errorSumDiag = 0.0;
             double errorSumSource = 0.0;
+            double errorSumlower = 0.0;
+            double errorSumupper = 0.0;
+            
             for (label i = 0; i < numCells_; i++) {
                 errorSumDiag += fabs(diag[i] - h_diag[i]);
                 errorSumSource += fabs(source[i] - h_source[i]);
+            }
+            for (label i = 0; i < numInternalFaces_; i++) {
+                errorSumlower += fabs(lower[i] - h_lower[i]);
+                errorSumupper += fabs(upper[i] - h_upper[i]);
             }
             double avgErrorDiag = errorSumDiag / numCells_;
             double avgErrorSource = errorSumSource / numCells_;
             
             Info << "Average error Diag = " << avgErrorDiag << "  -- source = "<< avgErrorSource<< endl;
+            Info << "Average error lower = " << errorSumlower / numInternalFaces_ << "  -- upper = "<< errorSumupper / numInternalFaces_<< endl;
            
             // fvOptions.constrain(TEqn);
             // TEqn.solve();

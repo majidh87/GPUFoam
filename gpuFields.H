@@ -40,6 +40,8 @@ class gpuFields {
     
     HybridArray<Foam::scalar *> hostPatchMagSf__; // Host: Patch field _ Magnitude of face area
 
+    HybridArray<Foam::scalar *> hostPatchSfDT__; // Host: Patch field _ surface scalar field DT
+
     // Device arrays for patch-related data
     HybridArray<Foam::label> devicePatchSizes_;        // Device: Number of cells adjacent to the faces of each patch
     
@@ -50,10 +52,11 @@ class gpuFields {
     HybridArray<Foam::scalar *> devicePatchInternalCoeffs_;    // Device: Internal coefficients for gradient calculation
     HybridMatrix<Foam::scalar> deviceIntermediatePatchInternalCoeffs_; // Intermediate host array for device data
     HybridArray<Foam::scalar *> devicePatchMagSf__; // Device: Patch field _ mag of face area
+    HybridArray<Foam::scalar *> devicePatchSfDT__; // Device: Patch field _ surface scalar field DT
 
     HybridMatrix<Foam::scalar> deviceIntermediatePatchMagSf__; // Intermediate host array for device data
 
-    
+    HybridMatrix<Foam::scalar> deviceIntermediatePatchSfDT__; // Intermediate host array for device data
 
     // Device arrays for mesh-related data
     Foam::MeshFields deviceMesh;
@@ -105,77 +108,56 @@ public:
         numCells_          = static_cast<int>(mesh.cells().size());
         numInternalFaces_  = static_cast<int>(mesh.faceNeighbour().size());
         numPatches_        = static_cast<int>(patches.size());
+
         // Allocate memory for host arrays
         hostNewTemperature_ = static_cast<double*>(malloc(numCells_*sizeof(double)));
         
-        //hostPatchSizes_     = static_cast<int*>(malloc(numPatches_*sizeof(int)));
         hostPatchSizes_.allocate(numPatches_,false);
         
-        //hostPatchAddr_      = static_cast<int**>(malloc(numPatches_*sizeof(int*)));
         hostPatchAddr_.allocate(numPatches_,false);
         
-        //hostPatchBoundaryCoeffs_ = static_cast<double**>(malloc(numPatches_*sizeof(double*)));
         hostPatchBoundaryCoeffs_.allocate_rows(numPatches_,STORE_ON_HOST);
         
-        //hostPatchInternalCoeffs_ = static_cast<double**>(malloc(numPatches_*sizeof(double*)));
         hostPatchInternalCoeffs_.allocate_rows(numPatches_,STORE_ON_HOST);
         
-        //hostPatchMagSf__   = static_cast<double**>(malloc(numPatches_*sizeof(double*)));
         hostPatchMagSf__.allocate(numPatches_,false);
+
+        hostPatchSfDT__.allocate(numPatches_,false);
         
         // Allocate memory for intermediate host arrays
         
-        //deviceIntermediatePatchAddr_ = static_cast<int**>(malloc(sizeof(int*)*numPatches_));
         deviceIntermediatePatchAddr_.allocate_rows(numPatches_,STORE_ON_HOST_GPU);
 
-        //deviceIntermediatePatchBoundaryCoeffs_ = static_cast<double**>(malloc(sizeof(double*)*numPatches_));
         deviceIntermediatePatchBoundaryCoeffs_.allocate_rows(numPatches_,STORE_ON_HOST_GPU);
-        //deviceIntermediatePatchInternalCoeffs_ = static_cast<double**>(malloc(sizeof(double*)*numPatches_));
+
         deviceIntermediatePatchInternalCoeffs_.allocate_rows(numPatches_,STORE_ON_HOST_GPU);
-        //deviceIntermediatePatchMagSf__ = static_cast<double**>(malloc(sizeof(double*)*numPatches_));
-		deviceIntermediatePatchMagSf__.allocate_rows(numPatches_,STORE_ON_HOST_GPU);
+
+        deviceIntermediatePatchMagSf__.allocate_rows(numPatches_,STORE_ON_HOST_GPU);
+
+        deviceIntermediatePatchSfDT__.allocate_rows(numPatches_,STORE_ON_HOST_GPU);
         
         devicePatchSizes_.allocate(numPatches_,true); 
-        /*        instead of          
-        _CUDA(cudaMalloc(reinterpret_cast<void**>(&)       ,numPatches_*sizeof(int)));
-        */
-         deviceMagSf__.allocate(numInternalFaces_,true);     
-         deviceSurfDT__.allocate(numInternalFaces_,true);           
-         //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceGammaMagSf_),numInternalFaces_*sizeof(double)));
 
-        
-         //_CUDA(cudaMalloc(reinterpret_cast<void**>(&devicePatchAddr_)       ,numPatches_*sizeof(int*)));
-         devicePatchAddr_.allocate(numPatches_,true);
-         //_CUDA(cudaMalloc(reinterpret_cast<void**>(&devicePatchBoundaryCoeffs_)       ,numPatches_*sizeof(double*)));
-         devicePatchBoundaryCoeffs_.allocate(numPatches_,true);
-         //_CUDA(cudaMalloc(reinterpret_cast<void**>(&devicePatchInternalCoeffs_)       ,numPatches_*sizeof(double*)));
-         devicePatchInternalCoeffs_.allocate(numPatches_,true);
-         //_CUDA(cudaMalloc(reinterpret_cast<void**>(&devicePatchMagSf__)  ,numPatches_*sizeof(double*)));
-         devicePatchMagSf__.allocate(numPatches_,true);
+        deviceMagSf__.allocate(numInternalFaces_,true);     
+
+        deviceSurfDT__.allocate(numInternalFaces_,true);           
+
+        devicePatchAddr_.allocate(numPatches_,true);
+
+        devicePatchBoundaryCoeffs_.allocate(numPatches_,true);
+ 
+        devicePatchInternalCoeffs_.allocate(numPatches_,true);
+ 
+        devicePatchMagSf__.allocate(numPatches_,true);
+
+        devicePatchSfDT__.allocate(numPatches_,true);
          
-         //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceDiagonal_)    ,numCells_*sizeof(double)));
-         //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceSource_)  ,numCells_*sizeof(double)));
-         //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceLower_)   ,numInternalFaces_*sizeof(double)));
-         //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceUpper_)   ,numInternalFaces_*sizeof(double)));
-         deviceLdu.init(numCells_,numInternalFaces_,true);
-         /*     
-    
+        deviceLdu.init(numCells_,numInternalFaces_,true);
 
-
-        _CUDA(cudaMalloc(reinterpret_cast<void**>(&d_T_new)   ,numCells_*sizeof(double)));
-        _CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceCsrRowPtr_) ,(numCells_+1)*sizeof(int)));
-        _CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceCsrColInd_) ,(numCells_+2*nIFaces)*sizeof(int)));
-        _CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceCsrValues_) ,(numCells_+2*nIFaces)*sizeof(double)));
-        */
         deviceMesh.init(mesh,true);
         
-        //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceOldTemperature_) ,numCells_*sizeof(double)));
         deviceOldTemperature_.allocate(numCells_,true);
 
-        
-	
-        //f2c.init();
-        // Set initialization flag to true
         isInitialized_ = true;            
     }
     // Handle function to process mesh and field data
@@ -194,7 +176,7 @@ public:
 
         // Boundary condition data
         const polyBoundaryMesh& patches = mesh.boundaryMesh();
-      //  surfaceScalarField gammaMagSf = -fvc::interpolate(DT) * mesh.magSf();
+
         forAll(patches, patchI)
         {
             const labelUList* pfCPtr = &patches[patchI].faceCells();
@@ -204,33 +186,24 @@ public:
             const scalarList* pfMagSFptr= &mesh.magSf().boundaryField()[patchI];
             scalarList* pfMagSFlist = const_cast<scalarList*>(pfMagSFptr);
 
-            //hostPatchAddr_[patchI] = &pfClist->first();
+            const scalarList* pfSfDTptr= &sf_DT.boundaryField()[patchI];
+            scalarList* pfSfDTlist = const_cast<scalarList*>(pfSfDTptr);
+
             hostPatchAddr_.set(patchI,&pfClist->first());
             
-            //hostPatchSizes_[patchI] = patches[patchI].faceCells().size();
             hostPatchSizes_.set(patchI,patches[patchI].faceCells().size());
             
-            //hostPatchInternalCoeffs_[patchI] = static_cast<double*>(malloc(hostPatchSizes_[patchI]*sizeof(double)));
             hostPatchInternalCoeffs_.allocate_col(patchI,hostPatchSizes_[patchI]);
             
             
-	        //hostPatchBoundaryCoeffs_[patchI] = static_cast<double*>(malloc(hostPatchSizes_[patchI]*sizeof(double)));
             hostPatchBoundaryCoeffs_.allocate_col(patchI,hostPatchSizes_[patchI]);
             
-            /*for (int i=0 ;i<hostPatchSizes_[patchI];i++)
-            {
-                //hostPatchInternalCoeffs_[patchI][i] = pF_IC_SF[i];
-                hostPatchInternalCoeffs_.set(patchI,i,pF_IC_SF[i]);
-                
-                //hostPatchBoundaryCoeffs_[patchI][i] = pF_BC_SF[i];
-                hostPatchBoundaryCoeffs_.set(patchI,i,pF_BC_SF[i]);
-            }*/
-	        hostPatchInternalCoeffs_.copy_col(patchI,pF_IC_SF.data());
+ 	        hostPatchInternalCoeffs_.copy_col(patchI,pF_IC_SF.data());
 	        hostPatchBoundaryCoeffs_.copy_col(patchI,pF_BC_SF.data());
 			
-			
-            //hostPatchMagSf__[patchI] = &pfGammaSFlist->first();
             hostPatchMagSf__.set(patchI,&pfMagSFlist->first());
+
+            hostPatchSfDT__.set(patchI,&pfSfDTlist->first());
             
             maxPatchSize_ = (hostPatchSizes_[patchI] > maxPatchSize_) ? hostPatchSizes_[patchI] : maxPatchSize_;
         }
@@ -238,167 +211,142 @@ public:
 
         for(int i=0; i<numPatches_; i++)
         {
-            //     _CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceIntermediatePatchAddr_[i])     ,hostPatchSizes_[i]*sizeof(int)));
             deviceIntermediatePatchAddr_.allocate_col(i,hostPatchSizes_[i]);
-            //     _CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceIntermediatePatchBoundaryCoeffs_[i])     ,hostPatchSizes_[i]*sizeof(double)));
+ 
             deviceIntermediatePatchBoundaryCoeffs_.allocate_col(i,hostPatchSizes_[i]);
-            //     _CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceIntermediatePatchInternalCoeffs_[i])     ,hostPatchSizes_[i]*sizeof(double)));
+
             deviceIntermediatePatchInternalCoeffs_.allocate_col(i,hostPatchSizes_[i]);
-            //     _CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceIntermediatePatchMagSf__[i]) ,hostPatchSizes_[i]*sizeof(double)));
+
             deviceIntermediatePatchMagSf__.allocate_col(i,hostPatchSizes_[i]);
+
+            deviceIntermediatePatchSfDT__.allocate_col(i,hostPatchSizes_[i]);
         }
         
-        printf("before devicePatchSizes_ copy \n");
-	devicePatchSizes_.copy(hostPatchSizes_.Data());
-        /*
-        instead of 
-        _CUDA(cudaMemcpy(devicePatchSizes_      ,hostPatchSizes_, sizeof(int)*numPatches_, cudaMemcpyHostToDevice));
-        */
         
+	    devicePatchSizes_.copy(hostPatchSizes_.Data());
+ 
         
          for( int i=0; i<numPatches_; i++ )
          {
-            //     _CUDA(cudaMemcpy(deviceIntermediatePatchAddr_[i]        ,h_pAdrr[i], hostPatchSizes_[i]*sizeof(int), cudaMemcpyHostToDevice));
             deviceIntermediatePatchAddr_.copy_col(i,hostPatchAddr_[i]);
-            //     _CUDA(cudaMemcpy(deviceIntermediatePatchBoundaryCoeffs_[i]        ,h_pf_BC[i], hostPatchSizes_[i]*sizeof(double), cudaMemcpyHostToDevice));
+
             deviceIntermediatePatchBoundaryCoeffs_.copy_col(i,hostPatchBoundaryCoeffs_.Data()[i]);
-            //     _CUDA(cudaMemcpy(deviceIntermediatePatchInternalCoeffs_[i]        ,h_pf_IC[i], hostPatchSizes_[i]*sizeof(double), cudaMemcpyHostToDevice));
+
             deviceIntermediatePatchInternalCoeffs_.copy_col(i,hostPatchInternalCoeffs_.Data()[i]);
-            //     _CUDA(cudaMemcpy(deviceIntermediatePatchMagSf__[i]   ,h_pf_GammaSf[i], hostPatchSizes_[i]*sizeof(double), cudaMemcpyHostToDevice));
+
             deviceIntermediatePatchMagSf__.copy_col(i,hostPatchMagSf__[i]);
+
+            deviceIntermediatePatchSfDT__.copy_col(i,hostPatchSfDT__[i]);
         }
         
-        //???? MN
-        // _CUDA(cudaMemcpy(devicePatchAddr_      ,deviceIntermediatePatchAddr_, sizeof(int*)*numPatches_, cudaMemcpyHostToDevice));
-        //devicePatchAddr_.
         devicePatchAddr_.copy(deviceIntermediatePatchAddr_.Data());
-        // _CUDA(cudaMemcpy(devicePatchBoundaryCoeffs_      ,deviceIntermediatePatchBoundaryCoeffs_, sizeof(double*)*numPatches_, cudaMemcpyHostToDevice));
+ 
         devicePatchBoundaryCoeffs_.copy(deviceIntermediatePatchBoundaryCoeffs_.Data());
-        // _CUDA(cudaMemcpy(devicePatchInternalCoeffs_      ,deviceIntermediatePatchInternalCoeffs_, sizeof(double*)*numPatches_, cudaMemcpyHostToDevice));
+
         devicePatchInternalCoeffs_.copy(deviceIntermediatePatchInternalCoeffs_.Data());
-        // _CUDA(cudaMemcpy(devicePatchMagSf__ ,deviceIntermediatePatchMagSf__, sizeof(double*)*numPatches_, cudaMemcpyHostToDevice));
+ 
         devicePatchMagSf__.copy(deviceIntermediatePatchMagSf__.Data());
 
+        devicePatchSfDT__.copy(deviceIntermediatePatchSfDT__.Data());
+
         // Mesh data
-        ////deviceMesh.handle(mesh);
+        deviceMesh.handle(mesh);
         
-	// Update time step and gammaMagSf
         scalar rDeltaT = 1.0/mesh.time().deltaTValue();
         invDeltaT_ = static_cast<double>(rDeltaT);
-        // surfaceScalarField sf_DT = -fvc::interpolate(DT); 
-        // surfaceScalarField gammaMagSf_ = sf_DT * mesh.magSf();
-		
+ 
         // Update old time temperature field to device
-        
-	const scalarList* ToldPtr = &T.oldTime().primitiveField();
+        const scalarList* ToldPtr = &T.oldTime().primitiveField();
         scalarList* Toldlist = const_cast<scalarList*>(ToldPtr);
         double* hostOldTemperature;	//Host : Old Temperature Time Field
         hostOldTemperature = &Toldlist->first();
         
-        // _CUDA(cudaMemcpy(deviceOldTemperature_, hostOldTemperature, nCells*sizeof(double),cudaMemcpyHostToDevice));
         deviceOldTemperature_.copy(hostOldTemperature);
 
-        // Update gammaMSF() to device
+        // Update surface magnitude() to device
         const scalarList* gMgaSfPtr = &mesh.magSf();
         scalarList* TgMagSflist = const_cast<scalarList*>(gMgaSfPtr);
 
         // Host arrays for mesh-related data
         double *hostMagSf_ = &TgMagSflist->first();    
         deviceMagSf__.copy(hostMagSf_);
-        // _CUDA(cudaMemcpy(deviceGammaMagSf_, hostGammaMagSf_, nIFaces*sizeof(double),cudaMemcpyHostToDevice));
-
-
+ 
         // Update surface scalar field to device
         const scalarList* sfDTPtr = &sf_DT.internalField();
         scalarList* sfDTlist = const_cast<scalarList*>(sfDTPtr);
         double *hostSurfDT_ = &sfDTlist->first();
         deviceSurfDT__.copy(hostSurfDT_);
-        // _CUDA(cudaMemcpy(deviceSurfDT_, hostSurfDT_, nIFaces*sizeof(double),cudaMemcpyHostToDevice));
-	printf("handle function is finished \n");
+    
     }
 
-    //  void updateF()
-    // {
-
-    // }
-    // void update()
-    // {
-    //     // _CUDA(cudaMemcpy(deviceOldTemperature_, h_T_new, nCells*sizeof(double),cudaMemcpyHostToDevice));
-    // }
+   
     // Reset function to free all allocated memory
     void reset()
     {
         isInitialized_ = false;
-        //if (hostPatchBoundaryCoeffs_) free(hostPatchBoundaryCoeffs_);
+
         hostPatchBoundaryCoeffs_.deallocate();
-        
-        //if (hostPatchInternalCoeffs_) free(hostPatchInternalCoeffs_);
+
         hostPatchInternalCoeffs_.deallocate();
         
-        //if (hostPatchMagSf__) free(hostPatchMagSf__);
         hostPatchMagSf__.deallocate();
         
-        //if (hostPatchAddr_) free(hostPatchAddr_);
         hostPatchAddr_.deallocate();
         
-        //if (hostPatchSizes_) free(hostPatchSizes_);
+        
         hostPatchSizes_.deallocate();
         
-        //if (deviceIntermediatePatchAddr_) free(deviceIntermediatePatchAddr_);
+        
         deviceIntermediatePatchAddr_.deallocate();
-        //if (deviceIntermediatePatchBoundaryCoeffs_) free(deviceIntermediatePatchBoundaryCoeffs_);
+       
         deviceIntermediatePatchBoundaryCoeffs_.deallocate();
-        //if (deviceIntermediatePatchInternalCoeffs_) free(deviceIntermediatePatchInternalCoeffs_);
+      
         deviceIntermediatePatchInternalCoeffs_.deallocate();
-        //if (deviceIntermediatePatchMagSf__) free(deviceIntermediatePatchMagSf__);
+        
 		deviceIntermediatePatchMagSf__.deallocate();
-        // if (devicePatchSizes_)            _CUDA(cudaFree(devicePatchSizes_));
+
+        deviceIntermediatePatchSfDT__.deallocate();
+       
         devicePatchSizes_.deallocate();
-        // if (devicePatchAddr_)            _CUDA(cudaFree(devicePatchAddr_));
+       
         devicePatchAddr_.deallocate();
-        // if (devicePatchBoundaryCoeffs_)            _CUDA(cudaFree(devicePatchBoundaryCoeffs_));
+      
         devicePatchBoundaryCoeffs_.deallocate();
-        // if (devicePatchInternalCoeffs_)            _CUDA(cudaFree(devicePatchInternalCoeffs_));
+    
         devicePatchInternalCoeffs_.deallocate();
-        // if (devicePatchMagSf__)       _CUDA(cudaFree(devicePatchMagSf__));
+     
         devicePatchMagSf__.deallocate();
         
+        devicePatchSfDT__.deallocate();
         
-        // if (deviceOldTemperature_)              _CUDA(cudaFree(deviceOldTemperature_));
         deviceOldTemperature_.deallocate();
         
         
-        // if (deviceGammaMagSf_)         _CUDA(cudaFree(deviceGammaMagSf_));
         deviceMesh.deallocate();
-        // //if (deviceCsrRowPtr_)            _CUDA(cudaFree(deviceCsrRowPtr_));      
-        //if (deviceCsrColInd_)            _CUDA(cudaFree(deviceCsrColInd_));
-        //if (deviceCsrValues_)            _CUDA(cudaFree(deviceCsrValues_)); 
     } 
     // Function to call the discretization kernel (currently just a placeholder)
     void discKernel()
         {
-        printf("discKernel is called \n");
- //printf("pf_BC[0]: %p, pf_IC[0]: %p\n", (void*)devicePatchBoundaryCoeffs_.Data()[0], (void*)devicePatchInternalCoeffs_.Data()[0]);
-        HybridArray<int> hostPatchSizes2;
-        hostPatchSizes2.allocate(devicePatchSizes_.size(),false);
-        hostPatchSizes2.copy(devicePatchSizes_);
-        for (label i = 0; i < hostPatchSizes2.size(); i++) 
-        { 
-            printf("hostPathSizes2 %d %d\n",i,hostPatchSizes2[i]); 
-        }
+        // HybridArray<int> hostPatchSizes2;
+        // hostPatchSizes2.allocate(devicePatchSizes_.size(),false);
+        // hostPatchSizes2.copy(devicePatchSizes_);
+        // for (label i = 0; i < hostPatchSizes2.size(); i++) 
+        // { 
+        //     printf("hostPathSizes2 %d %d\n",i,hostPatchSizes2[i]); 
+        // }
 
-        HybridArray<scalar> hostPatchInternalCoeff2;
-        hostPatchInternalCoeff2.allocate(deviceIntermediatePatchInternalCoeffs_.cols(0),false);
-        printf("cols[0]:%d \n",deviceIntermediatePatchInternalCoeffs_.cols(0));
-	hostPatchInternalCoeff2.copy(deviceIntermediatePatchInternalCoeffs_.Data()[0],true);
-        //not accessible
-	//hostPatchInternalCoeff2.copy(devicePatchInternalCoeffs_.Data()[0],true);
-	for (label i = 0; i < hostPatchInternalCoeff2.size(); i++) 
-        { 
-            printf("hostPatchInternalCoeff2 %d %f %f\n",i,hostPatchInternalCoeff2[i],hostPatchInternalCoeffs_.Data()[0][i]); 
-        }
+    //     HybridArray<scalar> hostPatchInternalCoeff2;
+    //     hostPatchInternalCoeff2.allocate(deviceIntermediatePatchInternalCoeffs_.cols(0),false);
+    //     printf("cols[0]:%d \n",deviceIntermediatePatchInternalCoeffs_.cols(0));
+	//     hostPatchInternalCoeff2.copy(deviceIntermediatePatchInternalCoeffs_.Data()[0],true);
+    //     //not accessible
+	// //hostPatchInternalCoeff2.copy(devicePatchInternalCoeffs_.Data()[0],true);
+	//     for (label i = 0; i < hostPatchInternalCoeff2.size(); i++) 
+    //     { 
+    //         printf("hostPatchInternalCoeff2 %d %f %f\n",i,hostPatchInternalCoeff2[i],hostPatchInternalCoeffs_.Data()[0][i]); 
+    //     }
 
-	discKernelWrapper(  numCells_,
+	discKernelWrapper(       numCells_,
                              numInternalFaces_,
 			                 deviceMesh.cellVolumes.Data(),
                              deviceOldTemperature_.Data(),
@@ -414,6 +362,7 @@ public:
                              devicePatchBoundaryCoeffs_.Data(),
                              devicePatchInternalCoeffs_.Data(),
                              devicePatchMagSf__.Data(),
+                             devicePatchSfDT__.Data(),
                              invDeltaT_,
                              deviceLdu.diagonal,
 			                 deviceLdu.source,

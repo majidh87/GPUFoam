@@ -19,6 +19,7 @@ __global__ void cellKernel(double *vcs,          // Volume of the cells
     if (id >= sizeDiag)
         return;
 
+    //printf("cellKernel: id: %d, vcs[id]: %e, tot[id]: %e\n", id, vcs[id], tot[id]);
     // Compute diagonal term: diag[id] = rDelgaG * vcs[id]
     diag[id] = rDelgaG * vcs[id];
 
@@ -64,12 +65,12 @@ __global__ void boundaryKernel(int *pSize,        // Number of faces in each pat
                                double **pf_BC,    // Boundary coefficients for each patch
                                double **pf_IC,    // Internal coefficients for each patch
                                double **pf_GammaSf, // Gamma coefficient for each patch
+                               double **pf_DT_surf, // DT patch field
                                double *diag,      // Diagonal terms of the matrix
                                double *source,    // Source terms of the linear system
                                int maxPatches,    // Maximum number of faces in any patch
                                int numberOfPatches) // Total number of patches
 {
-   
     // Calculate the thread IDs for 2D grid
     int idx = blockIdx.x * blockDim.x + threadIdx.x;  // Thread ID in x-direction
     int idy = blockIdx.y * blockDim.y + threadIdx.y;  // Thread ID in y-direction
@@ -78,10 +79,10 @@ __global__ void boundaryKernel(int *pSize,        // Number of faces in each pat
     // Ensure the thread IDs are within bounds
     if (idx >= pSize[idy] || idy >= numberOfPatches)
         return;
-       
+
     // Update the diagonal and source terms for boundary faces
-    atomicAdd(&diag[pAdrr[idy][idx]], pf_GammaSf[idy][idx] * pf_IC[idy][idx]);  // Add to diagonal
-    atomicAdd(&source[pAdrr[idy][idx]], -pf_GammaSf[idy][idx] * pf_BC[idy][idx]); // Subtract from source
+    atomicAdd(&diag[pAdrr[idy][idx]], pf_GammaSf[idy][idx] * pf_DT_surf[idy][idx]* pf_IC[idy][idx]);  // Add to diagonal
+    atomicAdd(&source[pAdrr[idy][idx]], -pf_GammaSf[idy][idx]* pf_DT_surf[idy][idx] * pf_BC[idy][idx]); // Subtract from source
    
 }
 
@@ -102,6 +103,7 @@ void discKernelWrapper(int sizeDiag,              // Number of cells
                        double **d_pf_BC,          // Boundary coefficients for each patch (on device)
                        double **d_pf_IC,          // Internal coefficients for each patch (on device)
                        double **d_pf_GammaSf,     // Gamma coefficient for each patch (on device)
+                       double **d_pf_DT_surf,     // DT patch field(on device)
                        double rDelgaG,            // Scaling factor
                        double *d_diag,            // Diagonal terms of the matrix (on device)
                        double *d_source,          // Source terms of the linear system (on device)
@@ -131,13 +133,13 @@ void discKernelWrapper(int sizeDiag,              // Number of cells
                      1);
 
        // Launch boundaryKernel to handle boundary conditions
-    boundaryKernel<<<gridBoundary, blockBoundary>>>(d_pSize, d_pAdrr, d_pf_BC, d_pf_IC, d_pf_GammaSf, d_diag, d_source, maxPatches, numOfPatches);
+    boundaryKernel<<<gridBoundary, blockBoundary>>>(d_pSize, d_pAdrr, d_pf_BC, d_pf_IC, d_pf_GammaSf,d_pf_DT_surf, d_diag, d_source, maxPatches, numOfPatches);
 
     // Optional: Debugging code to check the source terms (commented out)
     
-    double* hg_source = (double*)malloc((9) * sizeof(double));
-    cudaMemcpy(hg_source, d_source, (9) * sizeof(double), cudaMemcpyDeviceToHost);
-    for (int i = 0; i < 9; i++)
-        printf("*******%f\n", hg_source[i]);
+    // double* hg_source = (double*)malloc((9) * sizeof(double));
+    // cudaMemcpy(hg_source, d_source, (9) * sizeof(double), cudaMemcpyDeviceToHost);
+    // for (int i = 0; i < 9; i++)
+    //     printf("*******%f\n", hg_source[i]);
     
 }

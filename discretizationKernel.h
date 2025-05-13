@@ -20,6 +20,7 @@ void discKernelWrapper(
     double **d_pf_BC,        // Boundary coefficients for each patch (on device)
     double **d_pf_IC,        // Internal coefficients for each patch (on device)
     double **d_pf_GammaSf,   // Gamma coefficient for each patch (on device)
+    double **d_pf_SfDT,      // Surface diffusion term for each patch (on device)
     double rDelgaG,          // Scaling factor for diagonal and source terms
     double *h_diag,          // Diagonal terms of the matrix (on host)
     double *h_source,        // Source terms of the linear system (on host)
