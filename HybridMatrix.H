@@ -54,7 +54,6 @@ enum STORE_TYPE
 {
     UNKNOWN_STATE,
     STORE_ON_HOST,
-    STORE_ON_GPU,
     STORE_ON_HOST_GPU
 };
 //- Template class for dynamic matrix allocation supporting host/GPU memory.

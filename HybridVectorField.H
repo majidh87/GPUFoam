@@ -44,9 +44,7 @@ SourceFiles
 #include "zero.H"
 #include "HybridArray.H"
 #include "MiniVectorSpace.H"
-#ifdef CUDA_USE
 #include "cuda_error_handle.H"
-#endif
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam

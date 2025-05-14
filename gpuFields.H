@@ -9,6 +9,7 @@
 #include "HybridMatrix.H"
 #include "LduMatrixFields.H"
 #include "MeshFields.H"
+
 // #define checkCudaErrors(call)                                       \
 //     do {                                                            \
 //         cudaError_t err = call;                                     \
@@ -24,46 +25,35 @@
 class gpuFields { 
 
   public:    
-    Foam::label numCells_;          // Number of cells in the mesh
-    Foam::label numInternalFaces_;  // Number of internal faces in the mesh
     Foam::scalar invDeltaT_;      // Reciprocal of delta t (time step)
 
-    Foam::label maxPatchSize_;      // Maximum number of cells adjacent to any patch
-    Foam::label numPatches_;        // Number of patches in the domain
 
-    // Host arrays for patch-related data
-    HybridArray<Foam::label> hostPatchSizes_;        // Host: Number of cells adjacent to the faces of each patch
-    HybridArray<Foam::label *> hostPatchAddr_;        // Host: Indices of cells adjacent to the faces of each patch
-    HybridMatrix<Foam::scalar> hostPatchBoundaryCoeffs_;    // Host: Boundary coefficients for gradient calculation
+    HybridArray<Foam::scalar *> hostPatchSfDT_; // Host: Patch field _ surface scalar field DT
 
-    HybridMatrix<Foam::scalar> hostPatchInternalCoeffs_;    // Host: Internal coefficients for gradient calculation
-    
-    HybridArray<Foam::scalar *> hostPatchMagSf__; // Host: Patch field _ Magnitude of face area
-
-    HybridArray<Foam::scalar *> hostPatchSfDT__; // Host: Patch field _ surface scalar field DT
-
-    // Device arrays for patch-related data
-    HybridArray<Foam::label> devicePatchSizes_;        // Device: Number of cells adjacent to the faces of each patch
-    
-    HybridArray<Foam::label *> devicePatchAddr_;      // Device: Indices of cells adjacent to the faces of each patch
-    HybridMatrix<Foam::label> deviceIntermediatePatchAddr_;   // Intermediate host array for device data
-    HybridArray<Foam::scalar *> devicePatchBoundaryCoeffs_;    // Device: Boundary coefficients for gradient calculation
-    HybridMatrix<Foam::scalar> deviceIntermediatePatchBoundaryCoeffs_; // Intermediate host array for device data
-    HybridArray<Foam::scalar *> devicePatchInternalCoeffs_;    // Device: Internal coefficients for gradient calculation
-    HybridMatrix<Foam::scalar> deviceIntermediatePatchInternalCoeffs_; // Intermediate host array for device data
-    HybridArray<Foam::scalar *> devicePatchMagSf__; // Device: Patch field _ mag of face area
-    HybridArray<Foam::scalar *> devicePatchSfDT__; // Device: Patch field _ surface scalar field DT
-
-    HybridMatrix<Foam::scalar> deviceIntermediatePatchMagSf__; // Intermediate host array for device data
-
-    HybridMatrix<Foam::scalar> deviceIntermediatePatchSfDT__; // Intermediate host array for device data
 
     // Device arrays for mesh-related data
     Foam::MeshFields deviceMesh;
 
+    // Host: Boundary coefficients for gradient calculation
+    HybridMatrix<Foam::scalar> hostPatchBoundaryCoeffs_;    
+
+    // Host: Internal coefficients for gradient calculation
+    HybridMatrix<Foam::scalar> hostPatchInternalCoeffs_;    
+
     HybridArray<Foam::scalar> deviceOldTemperature_;       // Device: Old time temperature field
-    HybridArray<Foam::scalar> deviceSurfDT__;  // Device: face area
-    HybridArray<Foam::scalar> deviceMagSf__;  // Device: face area
+    HybridArray<Foam::scalar> deviceSurfDT_;  // Device: face area
+    //HybridArray<Foam::scalar> deviceMagSf__;  // Device: face area
+
+    Foam::GPUMatrix<Foam::scalar> devicePatchBoundaryCoeffs_;    // Device: Boundary coefficients for gradient calculation
+    //HybridMatrix<Foam::scalar> deviceIntermediatePatchBoundaryCoeffs_; // Intermediate host array for device data
+    
+    //HybridArray<Foam::scalar *> devicePatchInternalCoeffs_;    // Device: Internal coefficients for gradient calculation
+    //HybridMatrix<Foam::scalar> deviceIntermediatePatchInternalCoeffs_; // Intermediate host array for device data
+    Foam::GPUMatrix<Foam::scalar> devicePatchInternalCoeffs_;    // Device: Internal coefficients for gradient calculation
+
+    Foam::GPUMatrix<Foam::scalar> devicePatchSfDT_; // Device: Patch field _ surface scalar field DT
+    //HybridArray<Foam::scalar *> devicePatchSfDT__; // Device: Patch field _ surface scalar field DT
+    //HybridMatrix<Foam::scalar> deviceIntermediatePatchSfDT__; // Intermediate host array for device data
 
     // Device arrays for linear system (matrix and source terms)
     Foam::LduMatrixFields deviceLdu;
@@ -81,10 +71,6 @@ class gpuFields {
 public:
     // Constructor: Initialize all pointers to NULL and set initDone to false
     gpuFields():
-    numCells_(0),
-    numInternalFaces_(0),
-    maxPatchSize_(0),
-    numPatches_(0),
     deviceCsrRowPtr_(NULL),
     deviceCsrColInd_(NULL),
     deviceCsrValues_(NULL),
@@ -103,60 +89,52 @@ public:
     void init(fvMesh& mesh)
     {
         printf("init() is called \n");
-        const polyBoundaryMesh& patches = mesh.boundaryMesh();
-    
-        numCells_          = static_cast<int>(mesh.cells().size());
-        numInternalFaces_  = static_cast<int>(mesh.faceNeighbour().size());
-        numPatches_        = static_cast<int>(patches.size());
 
-        // Allocate memory for host arrays
-        hostNewTemperature_ = static_cast<double*>(malloc(numCells_*sizeof(double)));
-        
-        hostPatchSizes_.allocate(numPatches_,false);
-        
-        hostPatchAddr_.allocate(numPatches_,false);
-        
+        deviceMesh.init(mesh,true);
+
+
         hostPatchBoundaryCoeffs_.allocate_rows(numPatches_,STORE_ON_HOST);
-        
+    
         hostPatchInternalCoeffs_.allocate_rows(numPatches_,STORE_ON_HOST);
-        
-        hostPatchMagSf__.allocate(numPatches_,false);
 
-        hostPatchSfDT__.allocate(numPatches_,false);
+        
+        // Allocate memory for host arrays
+        hostNewTemperature_ = static_cast<double*>(malloc(deviceMesh.numCells*sizeof(double)));
+        
         
         // Allocate memory for intermediate host arrays
         
-        deviceIntermediatePatchAddr_.allocate_rows(numPatches_,STORE_ON_HOST_GPU);
+        //deviceIntermediatePatchAddr_.allocate_rows(numPatches_,STORE_ON_HOST_GPU);
 
-        deviceIntermediatePatchBoundaryCoeffs_.allocate_rows(numPatches_,STORE_ON_HOST_GPU);
+        //deviceIntermediatePatchBoundaryCoeffs_.allocate_rows(numPatches_,STORE_ON_HOST_GPU);
 
-        deviceIntermediatePatchInternalCoeffs_.allocate_rows(numPatches_,STORE_ON_HOST_GPU);
+        //deviceIntermediatePatchInternalCoeffs_.allocate_rows(numPatches_,STORE_ON_HOST_GPU);
 
-        deviceIntermediatePatchMagSf__.allocate_rows(numPatches_,STORE_ON_HOST_GPU);
+        //deviceIntermediatePatchMagSf__.allocate_rows(numPatches_,STORE_ON_HOST_GPU);
 
-        deviceIntermediatePatchSfDT__.allocate_rows(numPatches_,STORE_ON_HOST_GPU);
+        //deviceIntermediatePatchSfDT__.allocate_rows(numPatches_,STORE_ON_HOST_GPU);
         
-        devicePatchSizes_.allocate(numPatches_,true); 
 
-        deviceMagSf__.allocate(numInternalFaces_,true);     
+        //deviceMagSf__.allocate(numInternalFaces_,true);     
 
-        deviceSurfDT__.allocate(numInternalFaces_,true);           
+        deviceSurfDT_.allocate(deviceMesh.numInternalFaces,true);           
 
-        devicePatchAddr_.allocate(numPatches_,true);
+        //devicePatchAddr_.allocate(numPatches_,true);
 
-        devicePatchBoundaryCoeffs_.allocate(numPatches_,true);
+        //devicePatchBoundaryCoeffs_.allocate(numPatches_,true);
  
-        devicePatchInternalCoeffs_.allocate(numPatches_,true);
+        //devicePatchInternalCoeffs_.allocate(numPatches_,true);
  
-        devicePatchMagSf__.allocate(numPatches_,true);
+        //devicePatchMagSf__.allocate(numPatches_,true);
 
-        devicePatchSfDT__.allocate(numPatches_,true);
+        //devicePatchSfDT__.allocate(numPatches_,true);
          
-        deviceLdu.init(numCells_,numInternalFaces_,true);
+        deviceLdu.init(deviceMesh.numCells,deviceMesh.numInternalFaces,true);
 
-        deviceMesh.init(mesh,true);
         
-        deviceOldTemperature_.allocate(numCells_,true);
+        hostPatchSfDT_.allocate(deviceMesh.numPatches,false);
+
+        deviceOldTemperature_.allocate(deviceMesh.numCells,true);
 
         isInitialized_ = true;            
     }
@@ -174,84 +152,66 @@ public:
                 << abort(FatalError);
         }
 
-        // Boundary condition data
-        const polyBoundaryMesh& patches = mesh.boundaryMesh();
+        deviceMesh.handle(mesh);
 
         forAll(patches, patchI)
         {
-            const labelUList* pfCPtr = &patches[patchI].faceCells();
-            labelUList* pfClist  = const_cast<labelUList*>(pfCPtr);
             scalarField pF_BC_SF = T.boundaryField()[patchI].gradientBoundaryCoeffs();
             scalarField pF_IC_SF = T.boundaryField()[patchI].gradientInternalCoeffs();
-            const scalarList* pfMagSFptr= &mesh.magSf().boundaryField()[patchI];
-            scalarList* pfMagSFlist = const_cast<scalarList*>(pfMagSFptr);
-
             const scalarList* pfSfDTptr= &sf_DT.boundaryField()[patchI];
             scalarList* pfSfDTlist = const_cast<scalarList*>(pfSfDTptr);
+            hostPatchInternalCoeffs_.allocate_col(patchI,deviceMesh.hostPatchSizes[patchI]);
+            
+            
+            hostPatchBoundaryCoeffs_.allocate_col(patchI,deviceMesh.hostPatchSizes[patchI]);
+                
+            hostPatchInternalCoeffs_.copy_col(patchI,pF_IC_SF.data());
+            hostPatchBoundaryCoeffs_.copy_col(patchI,pF_BC_SF.data());
 
-            hostPatchAddr_.set(patchI,&pfClist->first());
-            
-            hostPatchSizes_.set(patchI,patches[patchI].faceCells().size());
-            
-            hostPatchInternalCoeffs_.allocate_col(patchI,hostPatchSizes_[patchI]);
-            
-            
-            hostPatchBoundaryCoeffs_.allocate_col(patchI,hostPatchSizes_[patchI]);
-            
- 	        hostPatchInternalCoeffs_.copy_col(patchI,pF_IC_SF.data());
-	        hostPatchBoundaryCoeffs_.copy_col(patchI,pF_BC_SF.data());
-			
-            hostPatchMagSf__.set(patchI,&pfMagSFlist->first());
+            hostPatchSfDT_.set(patchI,&pfSfDTlist->first());
 
-            hostPatchSfDT__.set(patchI,&pfSfDTlist->first());
-            
-            maxPatchSize_ = (hostPatchSizes_[patchI] > maxPatchSize_) ? hostPatchSizes_[patchI] : maxPatchSize_;
-        }
+        }    
 
-
-        for(int i=0; i<numPatches_; i++)
-        {
-            deviceIntermediatePatchAddr_.allocate_col(i,hostPatchSizes_[i]);
+        //for(int i=0; i<numPatches_; i++)
+        //{
+            //deviceIntermediatePatchAddr_.allocate_col(i,hostPatchSizes_[i]);
  
-            deviceIntermediatePatchBoundaryCoeffs_.allocate_col(i,hostPatchSizes_[i]);
+            //deviceIntermediatePatchBoundaryCoeffs_.allocate_col(i,hostPatchSizes_[i]);
 
-            deviceIntermediatePatchInternalCoeffs_.allocate_col(i,hostPatchSizes_[i]);
+            //deviceIntermediatePatchInternalCoeffs_.allocate_col(i,hostPatchSizes_[i]);
 
-            deviceIntermediatePatchMagSf__.allocate_col(i,hostPatchSizes_[i]);
+            //deviceIntermediatePatchMagSf__.allocate_col(i,hostPatchSizes_[i]);
 
-            deviceIntermediatePatchSfDT__.allocate_col(i,hostPatchSizes_[i]);
-        }
+            //deviceIntermediatePatchSfDT__.allocate_col(i,hostPatchSizes_[i]);
+        //}
         
         
-	    devicePatchSizes_.copy(hostPatchSizes_.Data());
  
         
-         for( int i=0; i<numPatches_; i++ )
-         {
-            deviceIntermediatePatchAddr_.copy_col(i,hostPatchAddr_[i]);
+         //for( int i=0; i<numPatches_; i++ )
+         //{
+            //deviceIntermediatePatchAddr_.copy_col(i,hostPatchAddr_[i]);
 
-            deviceIntermediatePatchBoundaryCoeffs_.copy_col(i,hostPatchBoundaryCoeffs_.Data()[i]);
+            //deviceIntermediatePatchBoundaryCoeffs_.copy_col(i,hostPatchBoundaryCoeffs_.Data()[i]);
 
-            deviceIntermediatePatchInternalCoeffs_.copy_col(i,hostPatchInternalCoeffs_.Data()[i]);
+            //deviceIntermediatePatchInternalCoeffs_.copy_col(i,hostPatchInternalCoeffs_.Data()[i]);
 
-            deviceIntermediatePatchMagSf__.copy_col(i,hostPatchMagSf__[i]);
+            //deviceIntermediatePatchMagSf__.copy_col(i,hostPatchMagSf__[i]);
 
-            deviceIntermediatePatchSfDT__.copy_col(i,hostPatchSfDT__[i]);
-        }
+            //deviceIntermediatePatchSfDT__.copy_col(i,hostPatchSfDT__[i]);
+        //}
         
-        devicePatchAddr_.copy(deviceIntermediatePatchAddr_.Data());
- 
-        devicePatchBoundaryCoeffs_.copy(deviceIntermediatePatchBoundaryCoeffs_.Data());
-
-        devicePatchInternalCoeffs_.copy(deviceIntermediatePatchInternalCoeffs_.Data());
- 
-        devicePatchMagSf__.copy(deviceIntermediatePatchMagSf__.Data());
-
-        devicePatchSfDT__.copy(deviceIntermediatePatchSfDT__.Data());
-
-        // Mesh data
-        deviceMesh.handle(mesh);
         
+        devicePatchBoundaryCoeffs_.copy(hostPatchBoundaryCoeffs_);
+        //deviceIntermediatePatchBoundaryCoeffs_.copy(hostPatchBoundaryCoeffs_);
+            
+        //devicePatchInternalCoeffs_.copy(deviceIntermediatePatchInternalCoeffs_.Data());
+        devicePatchInternalCoeffs_.copy(hostPatchInternalCoeffs_);
+
+        //devicePatchSfDT__.copy(deviceIntermediatePatchSfDT_);
+        devicePatchSfDT_.copy(hostPatchSfDT_,deviceMesh.hostPatchSizes);
+
+
         scalar rDeltaT = 1.0/mesh.time().deltaTValue();
         invDeltaT_ = static_cast<double>(rDeltaT);
  
@@ -259,23 +219,23 @@ public:
         const scalarList* ToldPtr = &T.oldTime().primitiveField();
         scalarList* Toldlist = const_cast<scalarList*>(ToldPtr);
         double* hostOldTemperature;	//Host : Old Temperature Time Field
-        hostOldTemperature = &Toldlist->first();
+        hostOldTemperature = Toldlist->begin();
         
         deviceOldTemperature_.copy(hostOldTemperature);
 
         // Update surface magnitude() to device
-        const scalarList* gMgaSfPtr = &mesh.magSf();
-        scalarList* TgMagSflist = const_cast<scalarList*>(gMgaSfPtr);
+        //const scalarList* gMgaSfPtr = &mesh.magSf();
+        //scalarList* TgMagSflist = const_cast<scalarList*>(gMgaSfPtr);
 
         // Host arrays for mesh-related data
-        double *hostMagSf_ = &TgMagSflist->first();    
-        deviceMagSf__.copy(hostMagSf_);
+        //double *hostMagSf_ = TgMagSflist->begin();    
+        //deviceMagSf__.copy(hostMagSf_);
  
         // Update surface scalar field to device
         const scalarList* sfDTPtr = &sf_DT.internalField();
         scalarList* sfDTlist = const_cast<scalarList*>(sfDTPtr);
-        double *hostSurfDT_ = &sfDTlist->first();
-        deviceSurfDT__.copy(hostSurfDT_);
+        double *hostSurfDT = sfDTlist->begin();
+        deviceSurfDT_.copy(hostSurfDT);
     
     }
 
@@ -285,43 +245,32 @@ public:
     {
         isInitialized_ = false;
 
-        hostPatchBoundaryCoeffs_.deallocate();
-
-        hostPatchInternalCoeffs_.deallocate();
-        
-        hostPatchMagSf__.deallocate();
-        
-        hostPatchAddr_.deallocate();
         
         
-        hostPatchSizes_.deallocate();
-        
-        
-        deviceIntermediatePatchAddr_.deallocate();
+        //deviceIntermediatePatchAddr_.deallocate();
        
-        deviceIntermediatePatchBoundaryCoeffs_.deallocate();
+        //deviceIntermediatePatchBoundaryCoeffs_.deallocate();
       
-        deviceIntermediatePatchInternalCoeffs_.deallocate();
+        //deviceIntermediatePatchInternalCoeffs_.deallocate();
         
-		deviceIntermediatePatchMagSf__.deallocate();
+		//deviceIntermediatePatchMagSf__.deallocate();
 
-        deviceIntermediatePatchSfDT__.deallocate();
+        //deviceIntermediatePatchSfDT__.deallocate();
        
-        devicePatchSizes_.deallocate();
-       
-        devicePatchAddr_.deallocate();
-      
-        devicePatchBoundaryCoeffs_.deallocate();
-    
-        devicePatchInternalCoeffs_.deallocate();
-     
-        devicePatchMagSf__.deallocate();
+        
         
         devicePatchSfDT__.deallocate();
         
         deviceOldTemperature_.deallocate();
         
-        
+        devicePatchBoundaryCoeffs.deallocate();
+
+        devicePatchInternalCoeffs.deallocate();
+
+        hostPatchBoundaryCoeffs.deallocate();
+
+        hostPatchInternalCoeffs.deallocate();
+            
         deviceMesh.deallocate();
     } 
     // Function to call the discretization kernel (currently just a placeholder)
@@ -346,23 +295,23 @@ public:
     //         printf("hostPatchInternalCoeff2 %d %f %f\n",i,hostPatchInternalCoeff2[i],hostPatchInternalCoeffs_.Data()[0][i]); 
     //     }
 
-	discKernelWrapper(       numCells_,
-                             numInternalFaces_,
+	discKernelWrapper(       deviceMesh.numCells,
+                             deviceMesh.numInternalFaces,
 			                 deviceMesh.cellVolumes.Data(),
                              deviceOldTemperature_.Data(),
-                             deviceSurfDT__.Data(),
+                             deviceSurfDT_.Data(),
 			                 deviceMesh.deltaCellCenters.Data(),
-		                     deviceMagSf__.Data(),
+		                     deviceMesh.faceAreas.Data(),
                              deviceMesh.upperAddress.Data(),
 			                 deviceMesh.lowerAddress.Data(),
-                             numPatches_,
-                             maxPatchSize_,
-                             devicePatchSizes_.Data(),
-                             devicePatchAddr_.Data(),
-                             devicePatchBoundaryCoeffs_.Data(),
-                             devicePatchInternalCoeffs_.Data(),
-                             devicePatchMagSf__.Data(),
-                             devicePatchSfDT__.Data(),
+                             deviceMesh.numPatches,
+                             deviceMesh.maxPatchSize,
+                             deviceMesh.devicePatchSizes_.Data(),
+                             deviceMesh.devicePatchAddr_.deviceList_.Data(),
+                             devicePatchBoundaryCoeffs_.deviceList_.Data(),
+                             devicePatchInternalCoeffs_.deviceList_.Data(),
+                             deviceMesh.devicePatchMagSf_.deviceList_.Data(),
+                             devicePatchSfDT_.deviceList_.Data(),
                              invDeltaT_,
                              deviceLdu.diagonal,
 			                 deviceLdu.source,

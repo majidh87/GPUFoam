@@ -146,14 +146,7 @@ void HybridMatrix<T>::allocate_rows(const label rows, const STORE_TYPE storeType
     cols_.setSize(rows,0);
     rows_ = rows;
     storeType_ = storeType;
-    if(storeType_== STORE_ON_GPU)
-    {
-        // Allocate GPU memory
-#ifdef CUDA_USE
-        //_CUDA(cudaMalloc(reinterpret_cast<void***>(&data_), rows_ * sizeof(T*)));
-#endif
-    }
-    else if(storeType_== STORE_ON_HOST || storeType_ == STORE_ON_HOST_GPU)
+    if(storeType_== STORE_ON_HOST || storeType_ == STORE_ON_HOST_GPU)
     {
         // Allocate host memory
         data_ = static_cast<T**>(malloc(rows_*sizeof(T*)));
@@ -171,7 +164,7 @@ void HybridMatrix<T>::allocate_col(const label row, const label colSize)
 {
     //printf("allocate_col start %d \n",colSize);
     cols_[row] = colSize;
-    if(storeType_== STORE_ON_GPU || storeType_== STORE_ON_HOST_GPU)
+    if(storeType_== STORE_ON_HOST_GPU)
     {
 #ifdef CUDA_USE
         _CUDA(cudaMalloc(reinterpret_cast<void**>(&data_[row]), cols_[row] * sizeof(T)));
@@ -197,17 +190,7 @@ void HybridMatrix<T>::deallocate()
 {
     if(data_)
     {
-        if(storeType_== STORE_ON_GPU)
-        {
-#ifdef CUDA_USE
-            for(label i=0; i<rows_; ++i)
-            {
-                if(data_[i]) cudaFree(data_[i]);
-            }
-            cudaFree(data_);
-#endif
-        }
-        else if(storeType_== STORE_ON_HOST)
+        if(storeType_== STORE_ON_HOST)
         {
             for(label i=0; i<rows_; ++i)
             {
@@ -232,7 +215,7 @@ void HybridMatrix<T>::deallocate()
 template<typename T>
 void HybridMatrix<T>::copy(const T** src)
 {
-    if(storeType_== STORE_ON_GPU || storeType_== STORE_ON_HOST_GPU)
+    if(storeType_== STORE_ON_HOST_GPU)
     {
         for(label i=0; i<rows_; ++i)
         {
@@ -254,7 +237,7 @@ void HybridMatrix<T>::copy(const T** src)
 template<typename T>        
 void HybridMatrix<T>::copy_col(const label row, const T* src)
 {
-    if(storeType_== STORE_ON_GPU || storeType_== STORE_ON_HOST_GPU)
+    if(storeType_== STORE_ON_HOST_GPU)
     {
 #ifdef CUDA_USE
         _CUDA(cudaMemcpy(data_[row], src, cols_[row]*sizeof(T),cudaMemcpyHostToDevice));

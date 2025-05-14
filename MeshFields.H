@@ -39,10 +39,12 @@ SourceFiles
 #include "label.H"
 #include "scalar.H"
 #include "HybridArray.H"
+#include "HybridMatrix.H"
+#include "GPUMatrix.H"
 
-#ifdef CUDA_USE
+
 #include "cuda_error_handle.H"
-#endif
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 namespace Foam
 {
@@ -51,6 +53,12 @@ namespace Foam
     {
         // Public Data
         public:    
+            // Number of cells in the mesh
+            Foam::label numCells;          
+            
+            // Number of internal faces in the mesh
+            Foam::label numInternalFaces;  
+            
             // Cell volumes
             HybridArray<Foam::scalar> cellVolumes;
             
@@ -70,15 +78,39 @@ namespace Foam
             // Upper address (neighbour) for each face
             HybridArray<Foam::label> upperAddress;        
     
-            // Number of cells in the mesh
-            //label numCells_;
+            // Maximum number of cells adjacent to any patch
+            Foam::label maxPatchSize;      
+            
+            // Number of patches in the domain
+            Foam::label numPatches;        
+        
+            // Host arrays for patch-related data
+            // Host: Number of cells adjacent to the faces of each patch
+            HybridArray<Foam::label> hostPatchSizes;        
 
-            // Number of internal faces in the mesh
-            //label numInternalFaces_;
+            // Host: Indices of cells adjacent to the faces of each patch
+            HybridArray<Foam::label *> hostPatchAddr;        
+
+            
+            // Host: Patch field _ Magnitude of face area
+            HybridArray<Foam::scalar *> hostPatchMagSf; 
+        
+            // Device arrays for patch-related data
+            // Device: Number of cells adjacent to the faces of each patch
+            HybridArray<Foam::label> devicePatchSizes;        
+            
+            // Device: Indices of cells adjacent to the faces of each patch
+            Foam::GPUMatrix<Foam::label> devicePatchAddr; 
+
+            // Device: Patch field _ mag of face area
+            Foam::GPUMatrix<Foam::scalar> devicePatchMagSf; 
+
+
+
         private:
 
             // Memory location (Host or GPU)
-            bool onGPU_;
+            Foam::Switch onGPU_;
 
             // Flag to check if initialization is done
             Foam::Switch isInitialized_;

@@ -46,14 +46,22 @@ namespace Foam {
 
 MeshFields::MeshFields()
 :
+    numCells(0),
+    numInternalFaces(0),
+    maxPatchSize(0),
+    numPatches(0),
     onGPU_(false),
     isInitialized_(false)
 {}
 
 MeshFields::MeshFields(const bool onGPU)
 :
-onGPU_(onGPU),
-isInitialized_(false)
+    numCells(0),
+    numInternalFaces(0),
+    maxPatchSize(0),
+    numPatches(0),
+    onGPU_(onGPU),
+    isInitialized_(false)
 {}
 
 MeshFields::~MeshFields()
@@ -64,6 +72,7 @@ MeshFields::~MeshFields()
 void MeshFields::deallocate()
 {
     isInitialized_ = false;
+
     cellVolumes.deallocate();
         
         
@@ -72,10 +81,27 @@ void MeshFields::deallocate()
     
     faceAreas.deallocate();
     
-    //gammaMagSf_.deallocate();
     
     lowerAddress.deallocate();
     upperAddress.deallocate();
+
+    
+    
+    
+    
+    hostPatchSizes.deallocate();
+
+    hostPatchAddr.deallocate();
+
+    hostPatchMagSf.deallocate();
+
+    
+    devicePatchSizes.deallocate();
+       
+    devicePatchAddr.deallocate();
+  
+ 
+    devicePatchMagSf.deallocate();
 
 }
 
@@ -83,13 +109,17 @@ void MeshFields::init(fvMesh& mesh,const bool onGPU )
 {
     onGPU_ = onGPU;
 
-    Foam::label numCells          = static_cast<Foam::label>(mesh.cells().size());
-    Foam::label numInternalFaces  = static_cast<Foam::label>(mesh.faceNeighbour().size());
+    const polyBoundaryMesh& patches = mesh.boundaryMesh();
+    
+    numCells          = static_cast<int>(mesh.cells().size());
+    numInternalFaces  = static_cast<int>(mesh.faceNeighbour().size());
+    numPatches        = static_cast<int>(patches.size());
 
-    STORE_TYPE st = STORE_ON_GPU;
+
+    bool st = true;
     if(!onGPU_)
     {
-        st = STORE_ON_HOST;
+        st = false;
     }
     //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceCellVolumes_)  ,numCells_*sizeof(double)));
     cellVolumes.allocate(numCells,st);
@@ -108,6 +138,15 @@ void MeshFields::init(fvMesh& mesh,const bool onGPU )
     
     upperAddress.allocate(numInternalFaces,st);
     //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceUpperAddress_)   ,numInternalFaces_*sizeof(int)));
+
+    hostPatchSizes.allocate(numPatches,false);
+        
+    hostPatchAddr.allocate(numPatches,false);
+    
+    
+    hostPatchMagSf.allocate(numPatches,false);
+
+    devicePatchSizes.allocate(numPatches,true); 
 
     isInitialized_ = true;            
 
@@ -158,6 +197,41 @@ void MeshFields::handle(fvMesh& mesh)
 
     //surfaceScalarField gammaMagSf_ = sf_DT * mesh.magSf();
 
+    // Boundary condition data
+    const polyBoundaryMesh& patches = mesh.boundaryMesh();
+
+    forAll(patches, patchI)
+    {
+        const labelUList* pfCPtr = &patches[patchI].faceCells();
+        labelUList* pfClist  = const_cast<labelUList*>(pfCPtr);
+        const scalarList* pfMagSFptr= &mesh.magSf().boundaryField()[patchI];
+        scalarList* pfMagSFlist = const_cast<scalarList*>(pfMagSFptr);
+
+
+        hostPatchAddr.set(patchI,&pfClist->first());
+            
+        hostPatchSizes.set(patchI,patches[patchI].faceCells().size());
+            
+			
+        hostPatchMagSf.set(patchI,&pfMagSFlist->first());
+
+            
+        maxPatchSize = (hostPatchSizes[patchI] > maxPatchSize) ? hostPatchSizes[patchI] : maxPatchSize;
+    }
+    if(onGPU_)
+    {
+        devicePatchSizes.copy(hostPatchSizes.Data());
+
+        //devicePatchAddr_.copy(deviceIntermediatePatchAddr_.Data());
+        devicePatchAddr.copy(hostPatchAddr,hostPatchSizes);
+
+            
+        //devicePatchMagSf__.copy(deviceIntermediatePatchMagSf__.Data());
+        devicePatchMagSf.copy(hostPatchMagSf,hostPatchSizes);
+            
+    }
+    // Mesh data
+        
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
