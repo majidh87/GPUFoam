@@ -86,7 +86,7 @@ void Foam::GPUMatrix<T>::deallocate()
 
 
 template<class T>
-void Foam::GPUMatrix<T>::~GPUMatrix()
+Foam::GPUMatrix<T>::~GPUMatrix()
 {
     deallocate();
 }

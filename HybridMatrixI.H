@@ -82,21 +82,7 @@ void HybridMatrix<T>::allocate(const labelList& colsSize)
 
     cols_ = colsSize;
     rows_ = colsSize.size();
-    if(storeType_== STORE_ON_GPU)
-    {
-        // Allocate GPU memory
-#ifdef CUDA_USE
-        //_CUDA(cudaMalloc(reinterpret_cast<void***>(&data_), rows_ * sizeof(T*)));
-#endif
-
-        for(label i=0; i<rows_; ++i)
-        {
-#ifdef CUDA_USE
-        //_CUDA(cudaMalloc(reinterpret_cast<void**>(&data_[i]), cols_[i] * sizeof(T)));
-#endif
-        }
-    }
-    else if (storeType_==STORE_ON_HOST_GPU)
+    if (storeType_==STORE_ON_HOST_GPU)
     {
         // Allocate host memory
         data_ = static_cast<T**>(malloc(rows_*sizeof(T*)));

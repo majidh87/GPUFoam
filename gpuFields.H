@@ -93,9 +93,9 @@ public:
         deviceMesh.init(mesh,true);
 
 
-        hostPatchBoundaryCoeffs_.allocate_rows(numPatches_,STORE_ON_HOST);
+        hostPatchBoundaryCoeffs_.allocate_rows(deviceMesh.numPatches,STORE_ON_HOST);
     
-        hostPatchInternalCoeffs_.allocate_rows(numPatches_,STORE_ON_HOST);
+        hostPatchInternalCoeffs_.allocate_rows(deviceMesh.numPatches,STORE_ON_HOST);
 
         
         // Allocate memory for host arrays
@@ -154,6 +154,8 @@ public:
 
         deviceMesh.handle(mesh);
 
+        const polyBoundaryMesh& patches = mesh.boundaryMesh();
+        
         forAll(patches, patchI)
         {
             scalarField pF_BC_SF = T.boundaryField()[patchI].gradientBoundaryCoeffs();
@@ -259,17 +261,17 @@ public:
        
         
         
-        devicePatchSfDT__.deallocate();
+        devicePatchSfDT_.deallocate();
         
         deviceOldTemperature_.deallocate();
         
-        devicePatchBoundaryCoeffs.deallocate();
+        devicePatchBoundaryCoeffs_.deallocate();
 
-        devicePatchInternalCoeffs.deallocate();
+        devicePatchInternalCoeffs_.deallocate();
 
-        hostPatchBoundaryCoeffs.deallocate();
+        hostPatchBoundaryCoeffs_.deallocate();
 
-        hostPatchInternalCoeffs.deallocate();
+        hostPatchInternalCoeffs_.deallocate();
             
         deviceMesh.deallocate();
     } 
@@ -306,12 +308,12 @@ public:
 			                 deviceMesh.lowerAddress.Data(),
                              deviceMesh.numPatches,
                              deviceMesh.maxPatchSize,
-                             deviceMesh.devicePatchSizes_.Data(),
-                             deviceMesh.devicePatchAddr_.deviceList_.Data(),
-                             devicePatchBoundaryCoeffs_.deviceList_.Data(),
-                             devicePatchInternalCoeffs_.deviceList_.Data(),
-                             deviceMesh.devicePatchMagSf_.deviceList_.Data(),
-                             devicePatchSfDT_.deviceList_.Data(),
+                             deviceMesh.devicePatchSizes.Data(),
+                             deviceMesh.devicePatchAddr.deviceList.Data(),
+                             devicePatchBoundaryCoeffs_.deviceList.Data(),
+                             devicePatchInternalCoeffs_.deviceList.Data(),
+                             deviceMesh.devicePatchMagSf.deviceList.Data(),
+                             devicePatchSfDT_.deviceList.Data(),
                              invDeltaT_,
                              deviceLdu.diagonal,
 			                 deviceLdu.source,

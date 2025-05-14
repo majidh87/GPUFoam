@@ -60,7 +60,10 @@ Description
 #include "gpuFields.H"
 #include "MeshFields.H"
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-bool log = true;    
+bool isLog = true;    
+
+#define Logger if (isLog) Info
+
 int main(int argc, char *argv[])
 {
     argList::addNote
@@ -174,10 +177,10 @@ int main(int argc, char *argv[])
                 scalar diff = fabs(diag[i] - h_diag[i]);
                 scalar diff2 = fabs(source[i] - h_source[i]);
                 if (diff > 1e-6) {
-                    Log << "diag error = OpenFOAM: diag[" << i << "] = " << diag[i] <<" -- GPU source[" << i << "] = " << h_diag[i] << endl;
+                    Logger << "diag error = OpenFOAM: diag[" << i << "] = " << diag[i] <<" -- GPU source[" << i << "] = " << h_diag[i] << endl;
                 }
                 if (diff2 > 1e-6) {
-                    Log << "source error = OpenFOAM: source[" << i << "] = " << source[i] <<" -- GPU diag[" << i << "] = " << h_source[i] << endl;
+                    Logger << "source error = OpenFOAM: source[" << i << "] = " << source[i] <<" -- GPU diag[" << i << "] = " << h_source[i] << endl;
                 }
             }
 
@@ -185,10 +188,10 @@ int main(int argc, char *argv[])
                 scalar diff = fabs(upper[i] - h_upper[i]);
                 scalar diff2 = fabs(lower[i] - h_lower[i]);
                 if (diff > 1e-6) {
-                    Log << "upper error = OpenFOAM: upper[" << i << "] = " << upper[i] <<" -- GPU upper[" << i << "] = " << h_upper[i] << endl;
+                    Logger << "upper error = OpenFOAM: upper[" << i << "] = " << upper[i] <<" -- GPU upper[" << i << "] = " << h_upper[i] << endl;
                 } 
                 if (diff2 > 1e-6) {
-                    Log << "lower error = OpenFOAM: lower[" << i << "] = " << lower[i] <<" -- GPU lower[" << i << "] = " << h_lower[i] << endl;
+                    Logger << "lower error = OpenFOAM: lower[" << i << "] = " << lower[i] <<" -- GPU lower[" << i << "] = " << h_lower[i] << endl;
                 }
             }
 
@@ -208,8 +211,8 @@ int main(int argc, char *argv[])
             double avgErrorDiag = errorSumDiag / numCells_;
             double avgErrorSource = errorSumSource / numCells_;
             
-            Log << "Average error Diag = " << avgErrorDiag << "  -- source = "<< avgErrorSource<< endl;
-            Log << "Average error lower = " << errorSumlower / numInternalFaces_ << "  -- upper = "<< errorSumupper / numInternalFaces_<< endl;
+            Logger << "Average error Diag = " << avgErrorDiag << "  -- source = "<< avgErrorSource<< endl;
+            Logger << "Average error lower = " << errorSumlower / numInternalFaces_ << "  -- upper = "<< errorSumupper / numInternalFaces_<< endl;
            
             // fvOptions.constrain(TEqn);
             // TEqn.solve();

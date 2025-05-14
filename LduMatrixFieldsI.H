@@ -46,24 +46,24 @@ namespace Foam {
 
 LduMatrixFields::LduMatrixFields()
 :
-    numCells_(0),
-    numInternalFaces_(0),
-    onGPU_(false),
     diagonal(nullptr),
     source(nullptr),
     lower(nullptr),
-    upper(nullptr)
+    upper(nullptr),
+    numCells_(0),
+    numInternalFaces_(0),
+    onGPU_(false)
 {}
 
 LduMatrixFields::LduMatrixFields(const label numCells, const label numInternalFaces , const Switch onGPU)
 :
-    numCells_(numCells),
-    numInternalFaces_(numInternalFaces),
-    onGPU_(onGPU),
     diagonal(nullptr),
     source(nullptr),
     lower(nullptr),
-    upper(nullptr)
+    upper(nullptr),
+    numCells_(numCells),
+    numInternalFaces_(numInternalFaces),
+    onGPU_(onGPU)
 {
 
 }
