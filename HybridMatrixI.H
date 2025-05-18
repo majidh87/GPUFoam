@@ -56,7 +56,7 @@ HybridMatrix<T>::HybridMatrix()
 template<typename T>
 HybridMatrix<T>::HybridMatrix(const label rows, const STORE_TYPE storeType)
 :
-    data_(nullptr)
+    data_(nullptr),
     rows_(rows),
     cols_(rows, 0),
     storeType_(storeType)
