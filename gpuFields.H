@@ -99,7 +99,7 @@ public:
 
         
         // Allocate memory for host arrays
-        hostNewTemperature_ = static_cast<double*>(malloc(deviceMesh.numCells*sizeof(double)));
+        hostNewTemperature_ = static_cast<Foam::scalar*>(malloc(deviceMesh.numCells*sizeof(Foam::scalar)));
         
         
         // Allocate memory for intermediate host arrays

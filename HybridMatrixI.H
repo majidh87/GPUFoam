@@ -47,19 +47,19 @@ namespace Foam {
 template<typename T>
 HybridMatrix<T>::HybridMatrix()
 :
+    data_(nullptr),
     rows_(0),
     cols_(0),
-    storeType_(UNKNOWN_STATE),
-    data_(nullptr)
+    storeType_(UNKNOWN_STATE)
 {}
 
 template<typename T>
 HybridMatrix<T>::HybridMatrix(const label rows, const STORE_TYPE storeType)
 :
+    data_(nullptr)
     rows_(rows),
     cols_(rows, 0),
-    storeType_(storeType),
-    data_(nullptr)
+    storeType_(storeType)
 {}
 
 

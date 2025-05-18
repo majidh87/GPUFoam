@@ -177,10 +177,10 @@ int main(int argc, char *argv[])
                 scalar diff = fabs(diag[i] - h_diag[i]);
                 scalar diff2 = fabs(source[i] - h_source[i]);
                 if (diff > 1e-6) {
-                    Logger << "diag error = OpenFOAM: diag[" << i << "] = " << diag[i] <<" -- GPU source[" << i << "] = " << h_diag[i] << endl;
+                    Logger << "diag error = OpenFOAM: diag[" << i << "] = " << diag[i] <<" -- GPU diag[" << i << "] = " << h_diag[i] << endl;
                 }
                 if (diff2 > 1e-6) {
-                    Logger << "source error = OpenFOAM: source[" << i << "] = " << source[i] <<" -- GPU diag[" << i << "] = " << h_source[i] << endl;
+                    Logger << "source error = OpenFOAM: source[" << i << "] = " << source[i] <<" -- GPU source[" << i << "] = " << h_source[i] << endl;
                 }
             }
 

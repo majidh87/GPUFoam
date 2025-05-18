@@ -111,12 +111,12 @@ void MeshFields::init(fvMesh& mesh,const bool onGPU )
 
     const polyBoundaryMesh& patches = mesh.boundaryMesh();
     
-    numCells          = static_cast<int>(mesh.cells().size());
-    numInternalFaces  = static_cast<int>(mesh.faceNeighbour().size());
-    numPatches        = static_cast<int>(patches.size());
+    numCells          = static_cast<Foam::label>(mesh.cells().size());
+    numInternalFaces  = static_cast<Foam::label>(mesh.faceNeighbour().size());
+    numPatches        = static_cast<Foam::label>(patches.size());
 
 
-    bool st = true;
+    Foam::Switch st = true;
     if(!onGPU_)
     {
         st = false;
@@ -124,8 +124,8 @@ void MeshFields::init(fvMesh& mesh,const bool onGPU )
     //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceCellVolumes_)  ,numCells_*sizeof(double)));
     cellVolumes.allocate(numCells,st);
         
-    //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceFaceAreas_)  ,numCells_*sizeof(double)));
-    faceAreas.allocate(numCells,st);
+    //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceFaceAreas_)  ,numCells_*sizeof(double))); ???
+    faceAreas.allocate(numInternalFaces,st);
         
     //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceDeltaCellCenters_)  ,numInternalFaces_*sizeof(double)));
 	deltaCellCenters.allocate(numInternalFaces,st);
