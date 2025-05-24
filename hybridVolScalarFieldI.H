@@ -45,9 +45,9 @@ void Foam::hybridVolScalarField::init(fvMesh& mesh)
 
     hostPatchSizes_.allocate(numPatches,false);
 
-    hostPatchBoundaryCoeffs.allocate(numPatches,false);
+    //hostPatchBoundaryCoeffs.allocate(numPatches,false);
     
-    hostPatchInternalCoeffs.allocate(numPatches,false);
+    //hostPatchInternalCoeffs.allocate(numPatches,false);
 
     
     // Allocate memory for host arrays
@@ -85,24 +85,28 @@ void Foam::hybridVolScalarField::handle(fvMesh& mesh,volScalarField& T)
         hostPatchSizes_.set(patchI,patches[patchI].faceCells().size());
 
         
-        //hostPatchInternalCoeffs_.allocate_col(patchI,hostPatchSizes_[patchI]);
+        hostPatchInternalCoeffs_.allocate_col(patchI,hostPatchSizes_[patchI]);
         
         
-        //hostPatchBoundaryCoeffs_.allocate_col(patchI,hostPatchSizes_[patchI]);
+        hostPatchBoundaryCoeffs_.allocate_col(patchI,hostPatchSizes_[patchI]);
         
-        hostPatchInternalCoeffs.set(patchI,pF_IC_SF.data());
+        //hostPatchInternalCoeffs.set(patchI,pF_IC_SF.data());
 
         
-        hostPatchBoundaryCoeffs.set(patchI,pF_BC_SF.data());
+        //hostPatchBoundaryCoeffs.set(patchI,pF_BC_SF.data());
         
-        //hostPatchInternalCoeffs_.copy_col(patchI,pF_IC_SF.data());
-        //hostPatchBoundaryCoeffs_.copy_col(patchI,pF_BC_SF.data());
+        hostPatchInternalCoeffs_.copy_col(patchI,pF_IC_SF.data());
+        hostPatchBoundaryCoeffs_.copy_col(patchI,pF_BC_SF.data());
 
     }    
 
-    devicePatchBoundaryCoeffs.copy(hostPatchBoundaryCoeffs,hostPatchSizes_);
+    //devicePatchBoundaryCoeffs.copy(hostPatchBoundaryCoeffs,hostPatchSizes_);
 
-    devicePatchInternalCoeffs.copy(hostPatchInternalCoeffs,hostPatchSizes_);
+    //devicePatchInternalCoeffs.copy(hostPatchInternalCoeffs,hostPatchSizes_);
+
+    devicePatchBoundaryCoeffs.copy(hostPatchBoundaryCoeffs_);
+    
+    devicePatchInternalCoeffs.copy(hostPatchInternalCoeffs_);
 
     // Update old time temperature field to device
     const scalarList* ToldPtr = &T.oldTime().primitiveField();
@@ -112,9 +116,6 @@ void Foam::hybridVolScalarField::handle(fvMesh& mesh,volScalarField& T)
         
     oldField.copy(hostOldTemperature);
 
-    //devicePatchBoundaryCoeffs.copy(hostPatchBoundaryCoeffs_);
-    
-    //devicePatchInternalCoeffs.copy(hostPatchInternalCoeffs_);
 
 }
 
@@ -129,8 +130,8 @@ Foam::hybridVolScalarField::~hybridVolScalarField()
 {
     isInitialized_ = false;
     hostPatchSizes_.deallocate();
-    hostPatchBoundaryCoeffs.deallocate();
-    hostPatchInternalCoeffs.deallocate();
+    hostPatchBoundaryCoeffs_.deallocate();
+    hostPatchInternalCoeffs_.deallocate();
     oldField.deallocate();
     devicePatchBoundaryCoeffs.deallocate();
     devicePatchInternalCoeffs.deallocate();

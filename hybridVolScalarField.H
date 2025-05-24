@@ -62,10 +62,10 @@ public:
     ~hybridVolScalarField();
 
     // Host: Boundary coefficients for gradient calculation
-    HybridArray<Foam::scalar *> hostPatchBoundaryCoeffs;    
+    //HybridArray<Foam::scalar *> hostPatchBoundaryCoeffs;    
 
     // Host: Internal coefficients for gradient calculation
-    HybridArray<Foam::scalar *> hostPatchInternalCoeffs;    
+    //HybridArray<Foam::scalar *> hostPatchInternalCoeffs;    
 
     // Device: Old time temperature field
     HybridArray<Foam::scalar> oldField;       
