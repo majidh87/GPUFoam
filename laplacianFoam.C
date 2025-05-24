@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
 
     Foam::hybridVolScalarField deviceT;
 
-    Foam::hybridSurfaceScalarField deviceDT;
+    Foam::hybridSurfaceScalarField deviceSDT;
 
     // Device arrays for linear system (matrix and source terms)
     Foam::LduMatrixFields deviceLdu;
@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
 
      deviceMesh.handle(mesh);
     
-     surfaceScalarField sf_SDT = -fvc::interpolate(DT); // changed New
+     surfaceScalarField sf_DT = -fvc::interpolate(DT); // changed New
      //g.handle(mesh,sf_DT,T);
      deviceT.handle(mesh,T);
      deviceSDT.handle(mesh,sf_DT);
@@ -172,10 +172,10 @@ int main(int argc, char *argv[])
             // std::cout << "Press any key to continue...";
             // std::cin.get();  // Waits for a character input including Enter
 
-	        h_diag.copy(g.deviceLdu.diagonal,true);
-            h_source.copy(g.deviceLdu.source,true);
-            h_upper.copy(g.deviceLdu.upper,true);
-            h_lower.copy(g.deviceLdu.lower,true);
+	        h_diag.copy(deviceLdu.diagonal,true);
+            h_source.copy(deviceLdu.source,true);
+            h_upper.copy(deviceLdu.upper,true);
+            h_lower.copy(deviceLdu.lower,true);
 	    
             // std::cout << "Press any key to continue...";
             // std::cin.get();  // Waits for a character input including Enter

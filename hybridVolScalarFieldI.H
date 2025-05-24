@@ -117,7 +117,7 @@ void Foam::hybridVolScalarField::update()
 }
 
 
-Foam::hybridVolScalarField::~gpuFields()
+Foam::hybridVolScalarField::~hybridVolScalarField()
 {
     isInitialized_ = false;
     hostPatchSizes_.deallocate();

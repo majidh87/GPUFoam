@@ -28,31 +28,6 @@ void discKernelWrapper(
     double *h_lower          // Lower off-diagonal terms (on host)
 );
 
-discKernelWrapper(       
-    deviceMesh.numCells,
-     deviceMesh.numInternalFaces,
-     deviceMesh.cellVolumes.Data(),
-     deviceOldTemperature_.Data(),
-     deviceSurfDT_.Data(),
-     deviceMesh.deltaCellCenters.Data(),
-     deviceMesh.faceAreas.Data(),
-     deviceMesh.upperAddress.Data(),
-     deviceMesh.lowerAddress.Data(),
-     deviceMesh.numPatches,
-     deviceMesh.maxPatchSize,
-     deviceMesh.devicePatchSizes.Data(),
-     deviceMesh.devicePatchAddr.deviceList.Data(),
-     devicePatchBoundaryCoeffs_.deviceList.Data(),
-     devicePatchInternalCoeffs_.deviceList.Data(),
-     deviceMesh.devicePatchMagSf.deviceList.Data(),
-     devicePatchSfDT_.deviceList.Data(),
-     deviceMesh.invDeltaT,
-     deviceLdu.diagonal,
-     deviceLdu.source,
-     deviceLdu.upper,
-     deviceLdu.lower
-     );
-
 void cellKernelWrapper(int sizeDiag,              // Number of cells
     double *vcs,               // Volume of the cells
     double *tot,               // Total value (e.g., temperature) at each cell
