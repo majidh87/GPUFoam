@@ -137,9 +137,9 @@ int main(int argc, char *argv[])
 
             printf("discKernel before\n");
             //g.discKernel();
-            printf("deviceMesh.invDeltaT %f" , deviceMesh.invDeltaT);
+            //printf("deviceMesh.invDeltaT %f \n" , deviceMesh.invDeltaT);
 
-            /*
+            
             cellKernelWrapper(
                 deviceMesh.numCells,
                 deviceMesh.cellVolumes.Data(),
@@ -175,7 +175,8 @@ int main(int argc, char *argv[])
                 deviceLdu.diagonal,
                 deviceLdu.source
             );
-            */
+            
+           /*
            discKernelWrapper(       
             deviceMesh.numCells,
              deviceMesh.numInternalFaces,
@@ -200,7 +201,7 @@ int main(int argc, char *argv[])
              deviceLdu.upper,
              deviceLdu.lower
              );
-
+            */
             Info<< "discKernel run is finished!"<<endl;
 
             // std::cout << "Press any key to continue...";
