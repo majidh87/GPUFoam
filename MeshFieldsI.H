@@ -231,7 +231,9 @@ void MeshFields::handle(fvMesh& mesh)
             
     }
     // Mesh data
-        
+    scalar rDeltaT = 1.0/mesh.time().deltaTValue();
+    invDeltaT = static_cast<Foam::scalar>(rDeltaT);
+    
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

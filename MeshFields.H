@@ -105,6 +105,8 @@ namespace Foam
             // Device: Patch field _ mag of face area
             Foam::GPUMatrix<Foam::scalar> devicePatchMagSf; 
 
+            // Reciprocal of delta t (time step)
+            Foam::scalar invDeltaT;      
 
 
         private:

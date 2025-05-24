@@ -57,8 +57,13 @@ Description
 #include "fvCFD.H"
 #include "fvOptions.H"
 #include "simpleControl.H"
-#include "gpuFields.H"
+//#include "gpuFields.H"
+#include  "discretizationKernel.h"
 #include "MeshFields.H"
+#include "hybridSurfaceScalarField.H"
+#include "hybridVolScalarField.H"
+#include "LduMatrixFields.H"
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 bool isLog = true;    
 
@@ -90,13 +95,26 @@ int main(int argc, char *argv[])
 
     Info<< "\nCalculating temperature distribution\n" << endl;
 
-     gpuFields g; // create an object from gpuFields
+    // Device arrays for mesh-related data
+    Foam::MeshFields deviceMesh;
 
-     g.init(mesh);
+    Foam::hybridVolScalarField deviceT;
+
+    Foam::hybridSurfaceScalarField deviceDT;
+
+    // Device arrays for linear system (matrix and source terms)
+    Foam::LduMatrixFields deviceLdu;
+
+    //gpuFields g; // create an object from gpuFields
+
+     //g.init(mesh);
+
+     deviceMesh.handle(mesh);
     
-     surfaceScalarField sf_DT = -fvc::interpolate(DT); // changed New
-     g.handle(mesh,sf_DT,T);
-
+     surfaceScalarField sf_SDT = -fvc::interpolate(DT); // changed New
+     //g.handle(mesh,sf_DT,T);
+     deviceT.handle(mesh,T);
+     deviceSDT.handle(mesh,sf_DT);
 
     
 
@@ -115,8 +133,40 @@ int main(int argc, char *argv[])
         {
 
             printf("discKernel before\n");
-            g.discKernel();
-	   
+            //g.discKernel();
+            cellKernelWrapper(
+                deviceMesh.numCells,
+                deviceMesh.cellVolumes.Data(),
+                deviceT.oldField.Data(),
+                deviceMesh.invDeltaT,
+                deviceLdu.diagonal,
+                deviceLdu.source
+            );
+
+            faceKernelWrapper(
+                deviceMesh.numInternalFaces,
+                deviceMesh.deltaCellCenters.Data(),
+                deviceMesh.faceAreas.Data(),
+                deviceSDT.internalField.Data(),
+                deviceMesh.upperAddress.Data(),
+                deviceMesh.lowerAddress.Data(),
+                deviceLdu.upper,
+                deviceLdu.lower,
+                deviceLdu.diagonal
+            );
+
+            boundaryKernelWrapper(
+                deviceMesh.numPatches,
+                deviceMesh.maxPatchSize,
+                deviceMesh.devicePatchSizes.Data(),
+                deviceMesh.devicePatchAddr.deviceList.Data(),
+                deviceT.devicePatchBoundaryCoeffs.deviceList.Data(),
+                deviceT.devicePatchInternalCoeffs.deviceList.Data(),
+                deviceMesh.devicePatchMagSf.deviceList.Data(),
+                deviceSDT.deviceBoundaryField.deviceList.Data(),
+                deviceLdu.diagonal,
+                deviceLdu.source
+            );
             Info<< "discKernel run is finished!"<<endl;
 
             // std::cout << "Press any key to continue...";

@@ -28,4 +28,62 @@ void discKernelWrapper(
     double *h_lower          // Lower off-diagonal terms (on host)
 );
 
+discKernelWrapper(       
+    deviceMesh.numCells,
+     deviceMesh.numInternalFaces,
+     deviceMesh.cellVolumes.Data(),
+     deviceOldTemperature_.Data(),
+     deviceSurfDT_.Data(),
+     deviceMesh.deltaCellCenters.Data(),
+     deviceMesh.faceAreas.Data(),
+     deviceMesh.upperAddress.Data(),
+     deviceMesh.lowerAddress.Data(),
+     deviceMesh.numPatches,
+     deviceMesh.maxPatchSize,
+     deviceMesh.devicePatchSizes.Data(),
+     deviceMesh.devicePatchAddr.deviceList.Data(),
+     devicePatchBoundaryCoeffs_.deviceList.Data(),
+     devicePatchInternalCoeffs_.deviceList.Data(),
+     deviceMesh.devicePatchMagSf.deviceList.Data(),
+     devicePatchSfDT_.deviceList.Data(),
+     deviceMesh.invDeltaT,
+     deviceLdu.diagonal,
+     deviceLdu.source,
+     deviceLdu.upper,
+     deviceLdu.lower
+     );
+
+void cellKernelWrapper(int sizeDiag,              // Number of cells
+    double *vcs,               // Volume of the cells
+    double *tot,               // Total value (e.g., temperature) at each cell
+    double rDelgaG,            // Scaling factor
+    double *d_diag,            // Diagonal terms of the matrix (on device)
+    double *d_source          // Source terms of the linear system (on device)
+);
+
+void faceKernelWrapper(
+    int sizeFace,              // Number of faces
+    double *delta,             // Delta coefficient for faces
+    double *gamma,             // Gamma coefficient for faces
+    double *DT_surf,               // Total value (e.g., temperature) at each cell
+    int *upperAddr,            // Indices of the upper cells for each face
+    int *lowerAddr,            // Indices of the lower cells for each face
+    double *d_upper,           // Upper off-diagonal terms (on device)
+    double *d_lower
+    double *d_diag            // Diagonal terms of the matrix (on device)
+);
+
+void boundaryKernelWrapper(
+    int numOfPatches,          // Number of patches
+    int maxPatches,            // Maximum number of faces in any patch
+    int *d_pSize,              // Number of faces in each patch (on device)
+    int **d_pAdrr,             // Addresses of the cells for each patch (on device)
+    double **d_pf_BC,          // Boundary coefficients for each patch (on device)
+    double **d_pf_IC,          // Internal coefficients for each patch (on device)
+    double **d_pf_GammaSf,     // Gamma coefficient for each patch (on device)
+    double **d_pf_DT_surf,     // DT patch field(on device)
+    double *d_diag,            // Diagonal terms of the matrix (on device)
+    double *d_source          // Source terms of the linear system (on device)
+);
+
 
