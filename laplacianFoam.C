@@ -181,7 +181,7 @@ int main(int argc, char *argv[])
              deviceMesh.numInternalFaces,
              deviceMesh.cellVolumes.Data(),
              deviceT.oldField.Data(),
-             deviceSDT.internalField.Data(),
+             deviceSDT.deviceInternalField.Data(),
              deviceMesh.deltaCellCenters.Data(),
              deviceMesh.faceAreas.Data(),
              deviceMesh.upperAddress.Data(),

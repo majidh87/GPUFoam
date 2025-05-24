@@ -95,8 +95,8 @@ void Foam::hybridVolScalarField::handle(fvMesh& mesh,volScalarField& T)
         
         //hostPatchBoundaryCoeffs.set(patchI,pF_BC_SF.begin());
         
-        hostPatchInternalCoeffs.copy_col(patchI,pF_IC_SF.data());
-        hostPatchBoundaryCoeffs.copy_col(patchI,pF_BC_SF.data());
+        hostPatchInternalCoeffs_.copy_col(patchI,pF_IC_SF.data());
+        hostPatchBoundaryCoeffs_.copy_col(patchI,pF_BC_SF.data());
 
     }    
 
@@ -112,9 +112,9 @@ void Foam::hybridVolScalarField::handle(fvMesh& mesh,volScalarField& T)
         
     oldField.copy(hostOldTemperature);
 
-    devicePatchBoundaryCoeffs_.copy(hostPatchBoundaryCoeffs_);
+    devicePatchBoundaryCoeffs.copy(hostPatchBoundaryCoeffs_);
     
-    devicePatchInternalCoeffs_.copy(hostPatchInternalCoeffs_);
+    devicePatchInternalCoeffs.copy(hostPatchInternalCoeffs_);
 
 }
 
