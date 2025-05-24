@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
                 deviceMesh.numInternalFaces,
                 deviceMesh.deltaCellCenters.Data(),
                 deviceMesh.faceAreas.Data(),
-                deviceSDT.internalField.Data(),
+                deviceSDT.deviceInternalField.Data(),
                 deviceMesh.upperAddress.Data(),
                 deviceMesh.lowerAddress.Data(),
                 deviceLdu.upper,

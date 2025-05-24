@@ -66,7 +66,7 @@ void Foam::hybridSurfaceScalarField::handle(fvMesh& mesh,surfaceScalarField& sf_
 
     forAll(patches, patchI)
     {
-        hostPatchSize_.set(patchI,patches[patchI].faceCells().size());
+        hostPatchSizes_.set(patchI,patches[patchI].faceCells().size());
 
         const scalarList* pfSfDTptr= &sf_DT.boundaryField()[patchI];
         scalarList* pfSfDTlist = const_cast<scalarList*>(pfSfDTptr);
@@ -85,6 +85,7 @@ void Foam::hybridSurfaceScalarField::handle(fvMesh& mesh,surfaceScalarField& sf_
 
 Foam::hybridSurfaceScalarField::~hybridSurfaceScalarField()
 {
+    hostPatchSizes_.deallocate();
     hostBoundaryField.deallocate();
     deviceInternalField.deallocate();
     deviceBoundaryField.deallocate();
