@@ -97,6 +97,12 @@ private:
     // Host: Number of cells adjacent to the faces of each patch
     HybridArray<Foam::label> hostPatchSizes_;        
 
+    // Host: Boundary coefficients for gradient calculation
+    HybridMatrix<Foam::scalar> hostPatchBoundaryCoeffs_;    
+
+    // Host: Internal coefficients for gradient calculation
+    HybridMatrix<Foam::scalar> hostPatchInternalCoeffs_;    
+
 };
 
 

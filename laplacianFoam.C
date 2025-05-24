@@ -114,7 +114,9 @@ int main(int argc, char *argv[])
     surfaceScalarField sf_DT = -fvc::interpolate(DT); // changed New
     //g.handle(mesh,sf_DT,T);
     deviceT.handle(mesh,T);
+    
     deviceSDT.handle(mesh,sf_DT);
+    
     deviceLdu.init(deviceMesh.numCells,deviceMesh.numInternalFaces,true);
 
     
@@ -135,6 +137,9 @@ int main(int argc, char *argv[])
 
             printf("discKernel before\n");
             //g.discKernel();
+            printf("deviceMesh.invDeltaT %f" , deviceMesh.invDeltaT);
+
+            /*
             cellKernelWrapper(
                 deviceMesh.numCells,
                 deviceMesh.cellVolumes.Data(),
@@ -143,6 +148,7 @@ int main(int argc, char *argv[])
                 deviceLdu.diagonal,
                 deviceLdu.source
             );
+
 
             faceKernelWrapper(
                 deviceMesh.numInternalFaces,
@@ -156,6 +162,7 @@ int main(int argc, char *argv[])
                 deviceLdu.diagonal
             );
 
+
             boundaryKernelWrapper(
                 deviceMesh.numPatches,
                 deviceMesh.maxPatchSize,
@@ -168,6 +175,32 @@ int main(int argc, char *argv[])
                 deviceLdu.diagonal,
                 deviceLdu.source
             );
+            */
+           discKernelWrapper(       
+            deviceMesh.numCells,
+             deviceMesh.numInternalFaces,
+             deviceMesh.cellVolumes.Data(),
+             deviceT.oldField.Data(),
+             deviceSDT.internalField.Data(),
+             deviceMesh.deltaCellCenters.Data(),
+             deviceMesh.faceAreas.Data(),
+             deviceMesh.upperAddress.Data(),
+             deviceMesh.lowerAddress.Data(),
+             deviceMesh.numPatches,
+             deviceMesh.maxPatchSize,
+             deviceMesh.devicePatchSizes.Data(),
+             deviceMesh.devicePatchAddr.deviceList.Data(),
+             deviceT.devicePatchBoundaryCoeffs.deviceList.Data(),
+             deviceT.devicePatchInternalCoeffs.deviceList.Data(),
+             deviceMesh.devicePatchMagSf.deviceList.Data(),
+             deviceSDT.deviceBoundaryField.deviceList.Data(),
+             deviceMesh.invDeltaT,
+             deviceLdu.diagonal,
+             deviceLdu.source,
+             deviceLdu.upper,
+             deviceLdu.lower
+             );
+
             Info<< "discKernel run is finished!"<<endl;
 
             // std::cout << "Press any key to continue...";

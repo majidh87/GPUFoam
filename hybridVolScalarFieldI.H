@@ -60,6 +60,10 @@ void Foam::hybridVolScalarField::init(fvMesh& mesh)
 
     isInitialized_ = true;            
 
+    hostPatchBoundaryCoeffs_.allocate_rows(numPatches,STORE_ON_HOST);
+    
+    hostPatchInternalCoeffs_.allocate_rows(numPatches,STORE_ON_HOST);
+
 }
 
 void Foam::hybridVolScalarField::handle(fvMesh& mesh,volScalarField& T)
@@ -81,23 +85,24 @@ void Foam::hybridVolScalarField::handle(fvMesh& mesh,volScalarField& T)
         hostPatchSizes_.set(patchI,patches[patchI].faceCells().size());
 
         
-        //hostPatchInternalCoeffs_.allocate_col(patchI,hostPatchSizes[patchI]);
+        hostPatchInternalCoeffs_.allocate_col(patchI,hostPatchSizes_[patchI]);
         
         
-        //hostPatchBoundaryCoeffs_.allocate_col(patchI,hostPatchSizes[patchI]);
+        hostPatchBoundaryCoeffs_.allocate_col(patchI,hostPatchSizes_[patchI]);
         
-        hostPatchInternalCoeffs.set(patchI,pF_IC_SF.begin());
+        //hostPatchInternalCoeffs.set(patchI,pF_IC_SF.begin());
 
         
-        hostPatchBoundaryCoeffs.set(patchI,pF_BC_SF.begin());
-        //hostPatchInternalCoeffs.copy_col(patchI,pF_IC_SF.data());
-        //hostPatchBoundaryCoeffs.copy_col(patchI,pF_BC_SF.data());
+        //hostPatchBoundaryCoeffs.set(patchI,pF_BC_SF.begin());
+        
+        hostPatchInternalCoeffs.copy_col(patchI,pF_IC_SF.data());
+        hostPatchBoundaryCoeffs.copy_col(patchI,pF_BC_SF.data());
 
     }    
 
-    devicePatchBoundaryCoeffs.copy(hostPatchBoundaryCoeffs,hostPatchSizes_);
+    //devicePatchBoundaryCoeffs.copy(hostPatchBoundaryCoeffs,hostPatchSizes_);
 
-    devicePatchInternalCoeffs.copy(hostPatchInternalCoeffs,hostPatchSizes_);
+    //devicePatchInternalCoeffs.copy(hostPatchInternalCoeffs,hostPatchSizes_);
 
     // Update old time temperature field to device
     const scalarList* ToldPtr = &T.oldTime().primitiveField();
@@ -107,6 +112,9 @@ void Foam::hybridVolScalarField::handle(fvMesh& mesh,volScalarField& T)
         
     oldField.copy(hostOldTemperature);
 
+    devicePatchBoundaryCoeffs_.copy(hostPatchBoundaryCoeffs_);
+    
+    devicePatchInternalCoeffs_.copy(hostPatchInternalCoeffs_);
 
 }
 

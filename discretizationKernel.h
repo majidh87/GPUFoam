@@ -28,6 +28,8 @@ void discKernelWrapper(
     double *h_lower          // Lower off-diagonal terms (on host)
 );
 
+
+
 void cellKernelWrapper(int sizeDiag,              // Number of cells
     double *vcs,               // Volume of the cells
     double *tot,               // Total value (e.g., temperature) at each cell
@@ -47,6 +49,7 @@ void faceKernelWrapper(
     double *d_lower,
     double *d_diag            // Diagonal terms of the matrix (on device)
 );
+
 
 void boundaryKernelWrapper(
     int numOfPatches,          // Number of patches
