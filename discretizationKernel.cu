@@ -108,8 +108,8 @@ void discKernelWrapper(int sizeDiag,              // Number of cells
                        double *d_diag,            // Diagonal terms of the matrix (on device)
                        double *d_source,          // Source terms of the linear system (on device)
                        double *d_upper,           // Upper off-diagonal terms (on device)
-                       double *d_lower
-                    )           // Lower off-diagonal terms (on device)
+                       double *d_lower           //// Lower off-diagonal terms (on device)
+                    )           
 {
     // Set block size for 1D kernels
     int blockSize = BSIZE;
@@ -171,7 +171,7 @@ void faceKernelWrapper(
     int *upperAddr,            // Indices of the upper cells for each face
     int *lowerAddr,            // Indices of the lower cells for each face
     double *d_upper,           // Upper off-diagonal terms (on device)
-    double *d_lower
+    double *d_lower,            // Lower off-diagonal terms (on device)
     double *d_diag            // Diagonal terms of the matrix (on device)
 )
 {

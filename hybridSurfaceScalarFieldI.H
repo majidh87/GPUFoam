@@ -33,6 +33,7 @@ inline Foam::hybridSurfaceScalarField::hybridSurfaceScalarField()
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
 void Foam::hybridSurfaceScalarField::init(fvMesh& mesh)
 {
     const polyBoundaryMesh& patches = mesh.boundaryMesh();
@@ -82,7 +83,7 @@ void Foam::hybridSurfaceScalarField::handle(fvMesh& mesh,surfaceScalarField& sf_
 
 }
 
-Foam::hybridSurfaceScalarField::~gpuFields()
+Foam::hybridSurfaceScalarField::~hybridSurfaceScalarField()
 {
     hostBoundaryField.deallocate();
     deviceInternalField.deallocate();

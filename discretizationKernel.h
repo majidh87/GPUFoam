@@ -69,7 +69,7 @@ void faceKernelWrapper(
     int *upperAddr,            // Indices of the upper cells for each face
     int *lowerAddr,            // Indices of the lower cells for each face
     double *d_upper,           // Upper off-diagonal terms (on device)
-    double *d_lower
+    double *d_lower,
     double *d_diag            // Diagonal terms of the matrix (on device)
 );
 

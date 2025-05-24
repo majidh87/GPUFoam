@@ -58,7 +58,7 @@ Description
 #include "fvOptions.H"
 #include "simpleControl.H"
 //#include "gpuFields.H"
-#include  "discretizationKernel.h"
+#include "discretizationKernel.h"
 #include "MeshFields.H"
 #include "hybridSurfaceScalarField.H"
 #include "hybridVolScalarField.H"

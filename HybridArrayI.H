@@ -227,7 +227,7 @@ void HybridArray<T>::copy(const T* src,const Switch srcOnGPU)
     else if(onGPU_ && srcOnGPU)
     {
 #ifdef CUDA_USE
-        _CUDA(cudaMemcpy(data_, src, size_ * sizeof(T), cudaMemcpyDeviceToDevice);
+        _CUDA(cudaMemcpy(data_, src, size_ * sizeof(T), cudaMemcpyDeviceToDevice));
 #endif
     }
 }
