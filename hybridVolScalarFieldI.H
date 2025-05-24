@@ -71,7 +71,7 @@ void Foam::hybridVolScalarField::handle(fvMesh& mesh,volScalarField& T)
 
     const polyBoundaryMesh& patches = mesh.boundaryMesh();
 
-    Foam::label numPatches        = static_cast<Foam::label>(patches.size());
+    //Foam::label numPatches        = static_cast<Foam::label>(patches.size());
 
     forAll(patches, patchI)
     {

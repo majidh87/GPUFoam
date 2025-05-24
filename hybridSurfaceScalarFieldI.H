@@ -62,7 +62,7 @@ void Foam::hybridSurfaceScalarField::handle(fvMesh& mesh,surfaceScalarField& sf_
 
     const polyBoundaryMesh& patches = mesh.boundaryMesh();
 
-    Foam::label numPatches        = static_cast<Foam::label>(patches.size());
+    //Foam::label numPatches        = static_cast<Foam::label>(patches.size());
 
     forAll(patches, patchI)
     {
