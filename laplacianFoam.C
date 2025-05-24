@@ -109,12 +109,13 @@ int main(int argc, char *argv[])
 
      //g.init(mesh);
 
-     deviceMesh.handle(mesh);
+    deviceMesh.handle(mesh);
     
-     surfaceScalarField sf_DT = -fvc::interpolate(DT); // changed New
-     //g.handle(mesh,sf_DT,T);
-     deviceT.handle(mesh,T);
-     deviceSDT.handle(mesh,sf_DT);
+    surfaceScalarField sf_DT = -fvc::interpolate(DT); // changed New
+    //g.handle(mesh,sf_DT,T);
+    deviceT.handle(mesh,T);
+    deviceSDT.handle(mesh,sf_DT);
+    deviceLdu.init(deviceMesh.numCells,deviceMesh.numInternalFaces,true);
 
     
 

@@ -90,3 +90,4 @@ Foam::GPUMatrix<T>::~GPUMatrix()
 {
     deallocate();
 }
+
