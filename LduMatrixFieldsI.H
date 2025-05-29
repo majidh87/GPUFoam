@@ -205,7 +205,7 @@ void LduMatrixFields::faceKernelWrapper(
     int *lowerAddr            // Indices of the lower cells for each face
     )
 {
-    ::faceKernelWrapper(sizeFace,delta,gamma,DT_surf,upperAddr,lowerAddr,diagonal);
+    ::faceKernelWrapper(sizeFace,delta,gamma,DT_surf,upperAddr,lowerAddr,upper,lower,diagonal);
 
 }
 
