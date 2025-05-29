@@ -173,7 +173,7 @@ void LduMatrixFields::init(const label numCells, const label numInternalFaces , 
 }
 
 
-void LduMatrixFields::init(fvMesh& mesh,const Switch onGPU = true)
+void LduMatrixFields::init(fvMesh& mesh,const Switch onGPU)
 {
     onGPU_ = onGPU;
 
@@ -205,7 +205,7 @@ void LduMatrixFields::faceKernelWrapper(
     int *lowerAddr            // Indices of the lower cells for each face
     )
 {
-    faceKernelWrapper(sizeFace,delta,gamma.DT_surf,upperAddr,lowerAddr,diagonal);
+    faceKernelWrapper(sizeFace,delta,gamma,DT_surf,upperAddr,lowerAddr,diagonal);
 
 }
 
