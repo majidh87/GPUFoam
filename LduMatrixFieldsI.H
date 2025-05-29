@@ -192,7 +192,7 @@ void LduMatrixFields::cellKernelWrapper(int sizeDiag,              // Number of 
     double rDelgaG            // Scaling factor
     )
 {
-    cellKernelWrapper(sizeDiag,vcs,tot,rDelgaG,diagonal,source);
+    ::cellKernelWrapper(sizeDiag,vcs,tot,rDelgaG,diagonal,source);
 
 }
 
@@ -205,7 +205,7 @@ void LduMatrixFields::faceKernelWrapper(
     int *lowerAddr            // Indices of the lower cells for each face
     )
 {
-    faceKernelWrapper(sizeFace,delta,gamma,DT_surf,upperAddr,lowerAddr,diagonal);
+    ::faceKernelWrapper(sizeFace,delta,gamma,DT_surf,upperAddr,lowerAddr,diagonal);
 
 }
 
@@ -220,7 +220,7 @@ void LduMatrixFields::boundaryKernelWrapper(
     double **d_pf_DT_surf     // DT patch field(on device)
     )
 {
-    boundaryKernelWrapper(numOfPatches,maxPatches,d_pSize,d_pAdrr,d_pf_BC,d_pf_IC,d_pf_GammaSf,d_pf_DT_surf,diagonal,source);
+    ::boundaryKernelWrapper(numOfPatches,maxPatches,d_pSize,d_pAdrr,d_pf_BC,d_pf_IC,d_pf_GammaSf,d_pf_DT_surf,diagonal,source);
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
