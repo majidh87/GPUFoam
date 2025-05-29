@@ -171,6 +171,58 @@ void LduMatrixFields::init(const label numCells, const label numInternalFaces , 
     onGPU_ = onGPU;
 	allocate();
 }
+
+
+void LduMatrixFields::init(fvMesh& mesh,const Switch onGPU = true)
+{
+    onGPU_ = onGPU;
+
+
+    
+    numCells_          = static_cast<Foam::label>(mesh.cells().size());
+    numInternalFaces_  = static_cast<Foam::label>(mesh.faceNeighbour().size());
+    
+	allocate();
+
+}
+
+void LduMatrixFields::cellKernelWrapper(int sizeDiag,              // Number of cells
+    double *vcs,               // Volume of the cells
+    double *tot,               // Total value (e.g., temperature) at each cell
+    double rDelgaG            // Scaling factor
+    )
+{
+    cellKernelWrapper(sizeDiag,vcs,tot,rDelgaG,diagonal,source);
+
+}
+
+void LduMatrixFields::faceKernelWrapper(
+    int sizeFace,              // Number of faces
+    double *delta,             // Delta coefficient for faces
+    double *gamma,             // Gamma coefficient for faces
+    double *DT_surf,               // Total value (e.g., temperature) at each cell
+    int *upperAddr,            // Indices of the upper cells for each face
+    int *lowerAddr            // Indices of the lower cells for each face
+    )
+{
+    faceKernelWrapper(sizeFace,delta,gamma.DT_surf,upperAddr,lowerAddr,diagonal);
+
+}
+
+void LduMatrixFields::boundaryKernelWrapper(
+    int numOfPatches,          // Number of patches
+    int maxPatches,            // Maximum number of faces in any patch
+    int *d_pSize,              // Number of faces in each patch (on device)
+    int **d_pAdrr,             // Addresses of the cells for each patch (on device)
+    double **d_pf_BC,          // Boundary coefficients for each patch (on device)
+    double **d_pf_IC,          // Internal coefficients for each patch (on device)
+    double **d_pf_GammaSf,     // Gamma coefficient for each patch (on device)
+    double **d_pf_DT_surf     // DT patch field(on device)
+    )
+{
+    boundaryKernelWrapper(numOfPatches,maxPatches,d_pSize,d_pAdrr,d_pf_BC,d_pf_IC,d_pf_GammaSf,d_pf_DT_surf,diagonal,source);
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

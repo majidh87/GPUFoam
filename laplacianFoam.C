@@ -58,7 +58,6 @@ Description
 #include "fvOptions.H"
 #include "simpleControl.H"
 //#include "gpuFields.H"
-#include "discretizationKernel.h"
 #include "MeshFields.H"
 #include "hybridSurfaceScalarField.H"
 #include "hybridVolScalarField.H"
@@ -117,7 +116,7 @@ int main(int argc, char *argv[])
     
     deviceSDT.handle(mesh,sf_DT);
     
-    deviceLdu.init(deviceMesh.numCells,deviceMesh.numInternalFaces,true);
+    deviceLdu.init(mesh);
 
     
 
@@ -140,30 +139,25 @@ int main(int argc, char *argv[])
             //printf("deviceMesh.invDeltaT %f \n" , deviceMesh.invDeltaT);
 
             
-            cellKernelWrapper(
+            deviceLdu.cellKernelWrapper(
                 deviceMesh.numCells,
                 deviceMesh.cellVolumes.Data(),
                 deviceT.oldField.Data(),
-                deviceMesh.invDeltaT,
-                deviceLdu.diagonal,
-                deviceLdu.source
-            );
+                deviceMesh.invDeltaT
+                        );
 
 
-            faceKernelWrapper(
+            deviceLdu.faceKernelWrapper(
                 deviceMesh.numInternalFaces,
                 deviceMesh.deltaCellCenters.Data(),
                 deviceMesh.faceAreas.Data(),
                 deviceSDT.deviceInternalField.Data(),
                 deviceMesh.upperAddress.Data(),
-                deviceMesh.lowerAddress.Data(),
-                deviceLdu.upper,
-                deviceLdu.lower,
-                deviceLdu.diagonal
+                deviceMesh.lowerAddress.Data()
             );
 
 
-            boundaryKernelWrapper(
+            deviceLdu.boundaryKernelWrapper(
                 deviceMesh.numPatches,
                 deviceMesh.maxPatchSize,
                 deviceMesh.devicePatchSizes.Data(),
@@ -171,9 +165,7 @@ int main(int argc, char *argv[])
                 deviceT.devicePatchBoundaryCoeffs.deviceList.Data(),
                 deviceT.devicePatchInternalCoeffs.deviceList.Data(),
                 deviceMesh.devicePatchMagSf.deviceList.Data(),
-                deviceSDT.deviceBoundaryField.deviceList.Data(),
-                deviceLdu.diagonal,
-                deviceLdu.source
+                deviceSDT.deviceBoundaryField.deviceList.Data()
             );
             
            /*

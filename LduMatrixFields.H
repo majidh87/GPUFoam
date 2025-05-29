@@ -38,6 +38,7 @@ SourceFiles
 
 #include "label.H"
 #include "scalar.H"
+#include "discretizationKernel.h"
 
 #ifdef CUDA_USE
 #include "cuda_error_handle.H"
@@ -85,6 +86,9 @@ namespace Foam
             //- set member values and call allocate
             void init(const label numCells, const label numInternalFaces , const Switch onGPU);
             
+            //- set member values and call allocate
+            void init(fvMesh& mesh,const Switch onGPU = true);
+
             //- Destructor
             ~LduMatrixFields();
 
@@ -94,7 +98,36 @@ namespace Foam
             //- Deallocate memory for the buffers
             void deallocate();
 
-    };
+            void cellKernelWrapper(int sizeDiag,              // Number of cells
+                                    double *vcs,               // Volume of the cells
+                                    double *tot,               // Total value (e.g., temperature) at each cell
+                                    double rDelgaG            // Scaling factor
+                                );
+
+
+            void faceKernelWrapper(
+                int sizeFace,              // Number of faces
+                double *delta,             // Delta coefficient for faces
+                double *gamma,             // Gamma coefficient for faces
+                double *DT_surf,               // Total value (e.g., temperature) at each cell
+                int *upperAddr,            // Indices of the upper cells for each face
+                int *lowerAddr            // Indices of the lower cells for each face
+            );
+
+
+            void boundaryKernelWrapper(
+                int numOfPatches,          // Number of patches
+                int maxPatches,            // Maximum number of faces in any patch
+                int *d_pSize,              // Number of faces in each patch (on device)
+                int **d_pAdrr,             // Addresses of the cells for each patch (on device)
+                double **d_pf_BC,          // Boundary coefficients for each patch (on device)
+                double **d_pf_IC,          // Internal coefficients for each patch (on device)
+                double **d_pf_GammaSf,     // Gamma coefficient for each patch (on device)
+                double **d_pf_DT_surf     // DT patch field(on device)
+            );
+
+
+        };
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
