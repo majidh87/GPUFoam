@@ -62,6 +62,8 @@ Description
 #include "hybridSurfaceScalarField.H"
 #include "hybridVolScalarField.H"
 #include "LduMatrixFields.H"
+// #include "gaussGradScheme.H"
+
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 bool isLog = true;    
@@ -82,9 +84,6 @@ int main(int argc, char *argv[])
     #include "createTime.H"
     #include "createMesh.H"
 
-//    #include "discretizationKernel.h"
-
-
     simpleControl simple(mesh);
 
 
@@ -104,9 +103,6 @@ int main(int argc, char *argv[])
     // Device arrays for linear system (matrix and source terms)
     Foam::LduMatrixFields deviceLdu;
 
-    //gpuFields g; // create an object from gpuFields
-
-     //g.init(mesh);
 
     deviceMesh.handle(mesh);
     
@@ -127,16 +123,93 @@ int main(int argc, char *argv[])
     HybridArray<scalar> h_source(numCells_,false);
     HybridArray<scalar> h_upper(numInternalFaces_,false);
     HybridArray<scalar> h_lower(numInternalFaces_,false);
+
+
+   
+
+    // const vectorField& cellCenters = mesh.C();
+
+  // Change this to the face index you want to inspect
+
+// const vectorField& Sf = mesh.Sf();                 // Face area vectors
+// const scalarField& magSf = mesh.magSf();           // Face area magnitudes
+ const vectorField& C = mesh.C();                   // Cell centers
+ const labelUList& owner = mesh.owner();
+ const labelUList& neighbour = mesh.neighbour();
+// const surfaceScalarField& deltaCoeffs = mesh.deltaCoeffs();
+
+
     while (simple.loop())
     {
         Info<< "Time = " << runTime.timeName() << nl << endl;
 
         while (simple.correctNonOrthogonal())
         {
+            // ---- non-orthogonal correction ----
+            // 1. Calculate the non-orthogonal correction vector for each face
+        surfaceVectorField Sn(mesh.Sf() / mesh.magSf());
+        surfaceVectorField corrVecDummy = mesh.delta() - (mesh.delta() & Sn) * Sn; // garbage 
+
+        const surfaceScalarField deltaCoeff = mesh.nonOrthDeltaCoeffs();
+
+        surfaceVectorField corrVec = corrVecDummy; 
+        forAll(corrVec, faceI)
+        {
+            vector delta(C[neighbour[faceI]] - C[owner[faceI]]);
+            corrVec2[faceI] = Sn[faceI] - delta * deltaCoeff[faceI]; /// would be added to MeshFields
+        }
+
+        // 2. Calculate the non-orthogonal correction flux
+        const volVectorField gradT = fvc::grad(T); // develope a kernel for grad(VSF) // check for skewness correction
+
+        const surfaceVectorField gradT_f = fvc::interpolate(gradT); // develope a kernel for interpolate(VVF)
+
+        surfaceScalarField correctionFlux = corrVec2 & gradT_f; // kernel for dot product of SVFs 
+
+        surfaceScalarField gammaSf = sf_DT * mesh.magSf(); // kernel  
+        surfaceScalarField correctionF = gammaSf * correctionFlux; // kernel  plus
+
+        // 3. Calculate the non-orthogonal net correction at cell centers
+
+        volScalarField correctionDiv = -fvc::div(correctionF); // kernel for divergence of SSF
+
+        volScalarField cellSize
+        (
+            IOobject
+            (
+                "cellSize",
+                runTime.timeName(),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::AUTO_WRITE
+            ),
+            mesh,
+            dimensionedScalar("zero", dimVolume, 0.0)
+        );
+        cellSize.ref() = mesh.V();
+
+        // 4. add the non-orthogonal correction term to the source term
+        volScalarField sourceTerm = cellSize * correctionDiv;
+
+// 6. Subtract this correction from the source term of your matrix
+// tmp<volScalarField> tSourceCorr = mesh.V() * correctionDiv;
+// volScalarField& sourceCorr = tSourceCorr.ref();  
+
+forAll(gradT , cellI)
+{
+    // Info << "Cell " << cellI << ": gradT = " << gradT[cellI] << endl;
+    Info << "face " << cellI << ": gamaSf = " << gammaSf[cellI] << endl;
+     Info << "face " << cellI << ": correctionFlux = " << correctionFlux[cellI] << endl;
+     Info << "Cell " << cellI << ": sourceTerm = " << sourceTerm[cellI] << endl;
+
+    //Info << "Cell " << cellI << ": sourceCorr = " << sourceCorr[cellI] << endl;
+}
+
+
+
 
             printf("discKernel before\n");
             //g.discKernel();
-            //printf("deviceMesh.invDeltaT %f \n" , deviceMesh.invDeltaT);
 
             
             deviceLdu.cellKernelWrapper(
@@ -149,13 +222,12 @@ int main(int argc, char *argv[])
 
             deviceLdu.faceKernelWrapper(
                 deviceMesh.numInternalFaces,
-                deviceMesh.deltaCellCenters.Data(),
+                deviceMesh.nonOrthdeltaCellCenters.Data(),
                 deviceMesh.faceAreas.Data(),
                 deviceSDT.deviceInternalField.Data(),
                 deviceMesh.upperAddress.Data(),
                 deviceMesh.lowerAddress.Data()
             );
-
 
             deviceLdu.boundaryKernelWrapper(
                 deviceMesh.numPatches,
@@ -168,32 +240,7 @@ int main(int argc, char *argv[])
                 deviceSDT.deviceBoundaryField.deviceList.Data()
             );
             
-           /*
-           discKernelWrapper(       
-            deviceMesh.numCells,
-             deviceMesh.numInternalFaces,
-             deviceMesh.cellVolumes.Data(),
-             deviceT.oldField.Data(),
-             deviceSDT.deviceInternalField.Data(),
-             deviceMesh.deltaCellCenters.Data(),
-             deviceMesh.faceAreas.Data(),
-             deviceMesh.upperAddress.Data(),
-             deviceMesh.lowerAddress.Data(),
-             deviceMesh.numPatches,
-             deviceMesh.maxPatchSize,
-             deviceMesh.devicePatchSizes.Data(),
-             deviceMesh.devicePatchAddr.deviceList.Data(),
-             deviceT.devicePatchBoundaryCoeffs.deviceList.Data(),
-             deviceT.devicePatchInternalCoeffs.deviceList.Data(),
-             deviceMesh.devicePatchMagSf.deviceList.Data(),
-             deviceSDT.deviceBoundaryField.deviceList.Data(),
-             deviceMesh.invDeltaT,
-             deviceLdu.diagonal,
-             deviceLdu.source,
-             deviceLdu.upper,
-             deviceLdu.lower
-             );
-            */
+
             Info<< "discKernel run is finished!"<<endl;
 
             // std::cout << "Press any key to continue...";
@@ -219,6 +266,11 @@ int main(int argc, char *argv[])
             const scalarField& upper = TEqn.upper();
             const scalarField& lower = TEqn.lower();
 
+            forAll(diag, i)
+            {
+            // Info << " openFoam diag before boundary correction: " << diag[i] << endl;
+             Info << " cell :" << i << " openFoam source before boundary correction: " << source[i] << endl;
+            }
 
             // correct diag and source with boundary conditions
             forAll(T.boundaryField(), patchi)
@@ -229,8 +281,16 @@ int main(int argc, char *argv[])
                 forAll(faceCells, i)
                 {
                     diag[faceCells[i]] += TEqn.internalCoeffs()[patchi][i];
+                 
                     source[faceCells[i]] += TEqn.boundaryCoeffs()[patchi][i];
+
                 }
+            }
+
+            forAll(diag, i)
+            {
+             //Info << " openFoam diag after boundary correction: " << diag[i] << endl;
+             Info << " cell :" << i << " openFoam source after boundary correction: " << source[i] << endl;
             }
 
             // const auto& internalCoeffs = TEqn.internalCoeffs();

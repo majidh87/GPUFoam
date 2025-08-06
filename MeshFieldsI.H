@@ -78,6 +78,8 @@ void MeshFields::deallocate()
         
     
     deltaCellCenters.deallocate();
+
+    nonOrthdeltaCellCenters.deallocate();
     
     faceAreas.deallocate();
     
@@ -130,6 +132,9 @@ void MeshFields::init(fvMesh& mesh,const bool onGPU )
     //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceDeltaCellCenters_)  ,numInternalFaces_*sizeof(double)));
 	deltaCellCenters.allocate(numInternalFaces,st);
 
+    nonOrthdeltaCellCenters.allocate(numInternalFaces,st);
+
+
     //gammaMagSf_.allocate(numInternalFaces,STORE_ON_GPU);           
     //_CUDA(cudaMalloc(reinterpret_cast<void**>(&deviceGammaMagSf_),numInternalFaces_*sizeof(double)));
     
@@ -169,18 +174,21 @@ void MeshFields::handle(fvMesh& mesh)
     // Mesh data
     const scalarList* listPtr       = &mesh.V();
     const scalarList* deltaCPtr     = &mesh.deltaCoeffs();
+    const scalarList* nonOrthDeltaCPtr = &mesh.nonOrthDeltaCoeffs();
     const scalarList* magSfPtr      = &mesh.magSf();
     const labelUList* ownerPtr      = &mesh.owner();
     const labelUList* neighbourPtr  = &mesh.neighbour();
 
     scalarList* blist           = const_cast<scalarList*>(listPtr);
     scalarList* deltaClist      = const_cast<scalarList*>(deltaCPtr);
+    scalarList* nonOrthDeltaClist = const_cast<scalarList*>(nonOrthDeltaCPtr);
     scalarList* magSflist       = const_cast<scalarList*>(magSfPtr);
     labelUList* ownerlist       = const_cast<labelUList*>(ownerPtr);
     labelUList* neighbourlist   = const_cast<labelUList*>(neighbourPtr);
     
     scalar *hostCellVolumes = &blist->first();             // Host: Cell volumes
     scalar *hostDeltaCellCenters = &deltaClist->first();   // Host: Delta cell centers for each internal face
+    scalar *hostNonOrthDeltaCellCenters = &nonOrthDeltaClist->first(); // Host: Non-orthogonal delta cell centers for each internal face
     scalar *hostFaceAreas = &magSflist->first();           // Host: Lower address (owner) for each face
     label *hostLowerAddress = &ownerlist->first();           // Host: Upper address (neighbour) for each face
     label *hostUpperAddress = &neighbourlist->first();       // Host: Face surface area magnitude
@@ -189,6 +197,8 @@ void MeshFields::handle(fvMesh& mesh)
         
     deltaCellCenters.copy(hostDeltaCellCenters);
         
+    nonOrthdeltaCellCenters.copy(hostNonOrthDeltaCellCenters);
+
     faceAreas.copy(hostFaceAreas);
         
     lowerAddress.copy(hostLowerAddress);

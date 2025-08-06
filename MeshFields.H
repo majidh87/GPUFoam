@@ -64,13 +64,16 @@ namespace Foam
             
             // Delta cell centers for each internal face        
             HybridArray<Foam::scalar> deltaCellCenters; 
+
+            // Non-orthogonal delta cell centers for each internal face        
+            HybridArray<Foam::scalar> nonOrthdeltaCellCenters; 
             
             // Face surface area magnitude   
             HybridArray<Foam::scalar> faceAreas;        
             
-            // Gamma multiplied by face area
-            //depend DT Fields
-            //HybridArray<Foam::scalar> gammaMagSf_;  
+            // correction Vector for each internal face
+            //HybridArray<Foam::vector> corrVec;
+
 
             // Lower address (owner) for each face
             HybridArray<Foam::label> lowerAddress;     

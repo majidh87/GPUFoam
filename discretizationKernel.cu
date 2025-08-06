@@ -45,10 +45,10 @@ __global__ void faceKernel(double *delta,        // Delta coefficient for faces
     // Ensure the thread ID is within bounds
     if (id >= sizeFace)
         return;
-
-    // Compute the off-diagonal term: temp = delta[id] * gamma[id]
+   // Compute the off-diagonal term: temp = delta[id] * gamma[id]
     double temp = delta[id] * gamma[id] * DT_surf[id];
-   
+    printf("upper[%d]: %f , delta: %f,  gammaMagSf: : %f\n", id, temp, delta[id], gamma[id]* DT_surf[id]);
+  
     // Assign the off-diagonal terms
     lower[id] = temp;  // Lower term
     upper[id] = temp;  // Upper term
@@ -82,7 +82,7 @@ __global__ void boundaryKernel(int *pSize,        // Number of faces in each pat
 
     // Update the diagonal and source terms for boundary faces
     atomicAdd(&diag[pAdrr[idy][idx]], pf_GammaSf[idy][idx] * pf_DT_surf[idy][idx]* pf_IC[idy][idx]);  // Add to diagonal
-    atomicAdd(&source[pAdrr[idy][idx]], -pf_GammaSf[idy][idx]* pf_DT_surf[idy][idx] * pf_BC[idy][idx]); // Subtract from source
+   // atomicAdd(&source[pAdrr[idy][idx]], -pf_GammaSf[idy][idx]* pf_DT_surf[idy][idx] * pf_BC[idy][idx]); // Subtract from source
    
 }
 
