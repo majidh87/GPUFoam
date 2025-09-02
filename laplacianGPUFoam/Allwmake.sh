@@ -1,4 +1,4 @@
 wclean
-source envAMGX 
-nvcc -c -arch=sm_70  discretizationKernel.cu -o discretizationKernel.o
+#source envAMGX 
+nvcc -c -arch=$CUDA_ARC  discretizationKernel.cu -o discretizationKernel.o
 wmake

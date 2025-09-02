@@ -1,0 +1,70 @@
+# 1 "Make/options"
+# 1 "<built-in>"
+# 1 "<command-line>"
+# 8 "<command-line>"
+# 1 "/usr/include/stdc-predef.h" 1 3 4
+
+# 17 "/usr/include/stdc-predef.h" 3 4
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 8 "<command-line>" 2
+# 1 "Make/options"
+EXE_INC = -g3 -O0 -I$(LIB_SRC)/finiteVolume/lnInclude -I$(LIB_SRC)/meshTools/lnInclude	 -I/home/karimi/OpenFOAM2306/ldu2csr/foam2csr/lnInclude -I$(CUDA_HOME)/include -I$(AMG_INC) -I/home/karimi/gpufoam/ompi_install/include/
+
+
+
+
+
+
+
+	
+EXE_LIBS = -g3 -O0 -lfiniteVolume -lfvOptions -lmeshTools -L$(CUDA_HOME)/lib64 -lcudart -fopenmp -L$(AMG_LIB) -lamgxsh -L/home/karimi/OpenFOAM/karimi-v2306/platforms/linux64GccDPInt32Opt/lib/ -lfoam2csr -L/home/karimi/gpufoam/ompi_install/lib/ -lmpi discretizationKernel.o
+# 25 "Make/options"
+
+
+EXE_CFLAGS = -g -D CUDA_USE
+
+
+
+# options

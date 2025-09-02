@@ -1,25 +1,29 @@
 EXE_INC = \
+    -g3 -O0 \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
-    -I$(LIB_SRC)/meshTools/lnInclude \
-    -I/usr/local/cuda-11.0/include \
-    -I/home/majid/cudaTests/ldu2csrGit/foam2csr/lnInclude/ \
-    -I$(AMG_INCLUDE) \
-    -I/home/majid/openmpi/include/
-
+    -I$(LIB_SRC)/meshTools/lnInclude	\
+    -I/home/karimi/OpenFOAM2306/ldu2csr/foam2csr/lnInclude \
+    -I$(CUDA_HOME)/include \
+    -I$(AMG_INC) \
+    -I/home/karimi/gpufoam/ompi_install/include/
+	
 EXE_LIBS = \
+    -g3 -O0 \
     -lfiniteVolume \
     -lfvOptions \
     -lmeshTools \
-    -L/usr/local/cuda/lib64 \
-    -L$(AMG_BUILD) \
-    -lcuda \
-    -lamgxsh \
-    -lcudart \
+    -L$(CUDA_HOME)/lib64 \
+     -lcudart \
     -fopenmp \
-    -L/home/majid/OpenFOAM/majid-v2206/platforms/linux64GccDPInt32Opt/lib/ \
+    -L$(AMG_LIB) \
+    -lamgxsh \
+    -L/home/karimi/OpenFOAM/karimi-v2306/platforms/linux64GccDPInt32Opt/lib/ \
     -lfoam2csr \
-    -L/home/majid/openmpi/lib/ \
-    -lmpi_cxx \
+    -L/home/karimi/gpufoam/ompi_install/lib/ \
     -lmpi \
-     discretizationKernel.o 
-   
+      discretizationKernel.o
+
+
+EXE_CFLAGS = -g -D CUDA_USE
+
+

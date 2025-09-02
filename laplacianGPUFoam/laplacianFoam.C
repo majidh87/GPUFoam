@@ -57,15 +57,16 @@ Description
 #include "fvCFD.H"
 #include "fvOptions.H"
 #include "simpleControl.H"
-#include "error.H"
-#include <cuda_runtime_api.h>
-#include <cuda.h>
-#include <amgx_c.h>
-#include <AmgXSolver.H>
-
-
-
+#include "MeshFields.H"
+#include "hybridSurfaceScalarField.H"
+#include "hybridVolScalarField.H"
+#include "LduMatrixFields.H"
+//#include "hybridVolVectorField.H"
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+bool isLog = true;    
+
+#define Logger if (isLog) Info
+
 int main(int argc, char *argv[])
 {
     argList::addNote
@@ -79,123 +80,382 @@ int main(int argc, char *argv[])
     #include "setRootCaseLists.H"
     #include "createTime.H"
     #include "createMesh.H"
-    #include "discretizationKernel.h"
-    #include "gpuFields.H"
 
-    //Add clocks to profile
-    #include "StopWatch.H"
+//    #include "discretizationKernel.h"
+
 
     simpleControl simple(mesh);
 
-    #include "createFields.H"
 
+    #include "createFields.H"
+	// volVectorField U
+	// (
+	// 	IOobject
+	// 	(
+	// 		"U",
+	// 		runTime.timeName(),
+	// 		mesh,
+	// 		IOobject::MUST_READ,
+	// 		IOobject::AUTO_WRITE
+	// 	),
+	// 	mesh
+	// );
+
+	// Initialise the velocity internal field to zero
+	//U = dimensionedVector(U.dimensions(), Zero);
+    
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-    gpuFields g;
-    AmgXSolver AmgSol;
-    AmgXCSRMatrix Amat;
-    MPI_Init(NULL, NULL);
-    const MPI_Comm amgx_mpi_comm = MPI_COMM_WORLD;
-    const std::string modeStr = "dDDI";
-    const std::string cfgFile = "./system/config";
-
-    g.init(mesh);
-    g.handle(mesh,DT,T);
-    Amat. initialiseComms(
-    amgx_mpi_comm,
-    0);
-
-    AmgSol.initialize
-        (
-            amgx_mpi_comm,
-            modeStr,
-            cfgFile
-        );
-    
-    bool firstIter = true;
-
-
     Info<< "\nCalculating temperature distribution\n" << endl;
+
+    // Device arrays for mesh-related data
+    Foam::MeshFields deviceMesh;
+
+    Foam::hybridVolScalarField deviceT;
+
+    Foam::hybridSurfaceScalarField deviceSDT;
+
+    // Device arrays for linear system (matrix and source terms)
+    Foam::LduMatrixFields deviceLdu;
+
+	//Foam::hybridVolVectorField<3> deviceU;
+
+    deviceMesh.handle(mesh);
     
+    surfaceScalarField sf_DT = -fvc::interpolate(DT); 
+
+    deviceT.handle(mesh,T);
+    
+    deviceSDT.handle(mesh,sf_DT);
+    
+    deviceLdu.init(mesh);
+
+	//deviceU.handle(mesh,U);
+
+    // Allocate host memory to hold the diagonal, source, and upper terms - testing
+    int numCells_ = mesh.cells().size();
+    int numInternalFaces_ = mesh.faceNeighbour().size();
+    HybridArray<scalar> h_diag(numCells_,false);
+    HybridArray<scalar> h_source(numCells_,false);
+    HybridArray<scalar> h_upper(numInternalFaces_,false);
+    HybridArray<scalar> h_lower(numInternalFaces_,false);
+    HybridArray<scalar> h_T(numCells_,false);
+    HybridArray<scalar> h_T_old(numCells_,false);
+
+    //////////////////////////////////////////
+    HybridArray<scalar> d_gradtx(numCells_,true);
+    HybridArray<scalar> d_gradty(numCells_,true);
+    HybridArray<scalar> d_gradtz(numCells_,true);
+    HybridArray<scalar> d_gradtInterpx(numInternalFaces_,true);
+    HybridArray<scalar> d_gradtInterpy(numInternalFaces_,true);
+    HybridArray<scalar> d_gradtInterpz(numInternalFaces_,true);
+    HybridArray<scalar> h_gradtx(numInternalFaces_,false);
+    HybridArray<scalar> h_gradty(numInternalFaces_,false);
+    HybridArray<scalar> h_gradtz(numInternalFaces_,false);
+    std::vector<int> faceCells_flat;
+    std::vector<scalar> Sf_flatX;
+    std::vector<scalar> Sf_flatY;
+    std::vector<scalar> Sf_flatZ;
+    std::vector<scalar> ssf_flat;
+    std::vector<int> patchOffsets;
+
+    int offset = 0;
+
+    forAll(mesh.boundary(), patchi)
+        {
+            const fvPatch& patch = mesh.boundary()[patchi];
+            const labelUList& faceCells = patch.faceCells();
+            const vectorField& pSf = mesh.Sf().boundaryField()[patchi];
+            const scalarField& pssf = T.boundaryField()[patchi];
+
+            patchOffsets.push_back(offset);
+
+            forAll(patch, facei)
+            {
+                faceCells_flat.push_back(faceCells[facei]);
+                Sf_flatX.push_back(pSf[facei].x());
+                Sf_flatY.push_back(pSf[facei].y());
+                Sf_flatZ.push_back(pSf[facei].z());
+                ssf_flat.push_back(pssf[facei]);
+                offset++;
+            }
+            
+        }
+        
+    size_t N = Sf_flatX.size();
+    HybridArray<int> d_faceCells(N,true);
+    HybridArray<scalar> d_SfX(N,true);
+    HybridArray<scalar> d_SfY(N,true);
+    HybridArray<scalar> d_SfZ(N,true);
+    HybridArray<scalar> d_ssf(N,true);
+
+    d_faceCells.copy(faceCells_flat.data(),false);
+    d_SfX.copy(Sf_flatX.data(),false);
+    d_SfY.copy(Sf_flatY.data(),false);
+    d_SfZ.copy(Sf_flatZ.data(),false);
+    d_ssf.copy(ssf_flat.data(),false);
+
+    HybridArray<scalar> d_correctionF(numInternalFaces_,true);
+    HybridArray<scalar> h_correctionF(numInternalFaces_,false);
+
+    HybridArray<scalar> d_correctionDiv(numCells_,true);
+    HybridArray<scalar> h_correctionDiv(numCells_,false);
+    /////////////////////////////////////////
+
     while (simple.loop())
     {
         Info<< "Time = " << runTime.timeName() << nl << endl;
-               
+
         while (simple.correctNonOrthogonal())
         {
+            printf("discKernel before\n");
             
+            //cell kernel is basicly fvm::ddt(T)
+            deviceLdu.cellKernelWrapper(
+            deviceMesh.numCells,
+            deviceMesh.cellVolumes.Data(),
+            deviceT.oldField.Data(),
+            deviceMesh.invDeltaT
+                    );
 
-            if (firstIter)
-            {
-                Info<< "discritization " <<endl;
-                g.discKernel();
-                Amat.setValuesLDU
-                (
-                g.nCells,
-                g.nIFaces,
-                0,
-                0,
-                0,
-                g.d_uAddr,
-                g.d_lAddr,
-                0,
-                NULL,
-                NULL,
-                g.d_diag,
-                g.d_upper,
-                g.d_lower,
-                NULL
-                ); 
-
-            Info<< "amgx.setup " <<endl;
-                AmgSol.setOperator
-                (
-                g.nCells,
-                g.nCells,
-                g.nCells+2*g.nIFaces,
-                Amat
-                );
-                firstIter = false;
-            }
-            else
-            {
-                g.update();
-                g.updateDisc();
-                Amat.updateValues(  g.nCells,
-                            g.nIFaces,
-                            0,
-                            g.d_diag,
-                            g.d_upper,
-                            g.d_lower,
-                            NULL
-                            );
-                AmgSol.updateOperator(  g.nCells,
-                                g.nCells+2*g.nIFaces,
-                                Amat
-                            );
-            }
-            Info<< "amgx.solve " <<endl;
-
-            AmgSol.solve
-            (
-                g.nCells,
-                &g.h_T_new[0],
-                &g.d_source[0],
-                Amat
+            deviceLdu.faceKernelWrapper(
+            deviceMesh.numInternalFaces,
+            deviceMesh.nonOrthdeltaCellCenters.Data(),
+            deviceMesh.faceAreas.Data(),
+            deviceSDT.deviceInternalField.Data(),
+            deviceMesh.upperAddress.Data(),
+            deviceMesh.lowerAddress.Data()
             );
+
+            deviceLdu.boundaryKernelWrapper(
+            deviceMesh.numPatches,
+            deviceMesh.maxPatchSize,
+            deviceMesh.devicePatchSizes.Data(),
+            deviceMesh.devicePatchAddr.deviceList.Data(),
+            deviceT.devicePatchBoundaryCoeffs.deviceList.Data(),
+            deviceT.devicePatchInternalCoeffs.deviceList.Data(),
+            deviceMesh.devicePatchMagSf.deviceList.Data(),
+            deviceSDT.deviceBoundaryField.deviceList.Data()
+            );
+
+            // deviceLdu.gradTKernelWrapper(
+            // deviceT.oldField.Data(),
+            // deviceMesh.upperAddress.Data(),
+            // deviceMesh.lowerAddress.Data(),
+            // deviceMesh.faceWeights.Data(),
+            // deviceMesh.faceAreaVector_x.Data(),
+            // deviceMesh.faceAreaVector_y.Data(),
+            // deviceMesh.faceAreaVector_z.Data(),
+            // d_gradtx.Data(),
+            // d_gradty.Data(),
+            // d_gradtz.Data(),
+            // deviceMesh.numInternalFaces
+            // );
+
+    
+            // deviceLdu.applyBoundaryGradientWrapper (
+            // d_faceCells.Data(), // [N]
+            // d_SfX.Data(),    // [N]
+            // d_SfY.Data(),    // [N]
+            // d_SfZ.Data(),    // [N]
+            // d_ssf.Data(),    // [N]
+            // deviceMesh.cellVolumes.Data(),
+            // d_gradtx.Data(),                     // [nCells]
+            // d_gradty.Data(),                     // [nCells]
+            // d_gradtz.Data(),                     // [nCells]
+            // N ,
+            // deviceMesh.numCells);
+            
+            //   //  printf("size of flat array = %d\n", N);
+
+            // deviceLdu.interpololateKernelWrapper( d_gradtx.Data(),
+            // d_gradty.Data(),
+            // d_gradtz.Data(),
+            // deviceMesh.upperAddress.Data(),
+            // deviceMesh.lowerAddress.Data(),
+            // deviceMesh.faceWeights.Data(),
+            // d_gradtInterpx.Data(),
+            // d_gradtInterpy.Data(),
+            // d_gradtInterpz.Data(),
+            // deviceMesh.numInternalFaces
+            // );
+
+            // deviceLdu.fusedCorrectionFluxWrapper(
+            // deviceMesh.corrVector_x.Data(),
+            // deviceMesh.corrVector_y.Data(),
+            // deviceMesh.corrVector_z.Data(),
+            // d_gradtInterpx.Data(),
+            // d_gradtInterpy.Data(),
+            // d_gradtInterpz.Data(),
+            // deviceSDT.deviceInternalField.Data(),
+            // deviceMesh.faceAreas.Data(),
+            // d_correctionF.Data(),
+            // deviceMesh.numInternalFaces
+            // );
+     
+            // deviceLdu.computeCorrectionDivWrapper(
+            // d_correctionF.Data(),
+            // deviceMesh.upperAddress.Data(),
+            // deviceMesh.lowerAddress.Data(),
+            // deviceMesh.cellVolumes.Data(),
+            // d_correctionDiv.Data(),
+            // deviceMesh.numInternalFaces
+            // );
         
-            /*for(label i=0; i<10; i++) 
-            {  
-                Info <<"REsult:"<<g.h_T_new[i]<<endl; 
-            }*/
+            // deviceLdu.updateSourceWrapper(
+            // deviceMesh.cellVolumes.Data(),
+            // d_correctionDiv.Data(),
+            // deviceMesh.numCells
+            // );
+
+            h_diag.copy(deviceLdu.diagonal,true);
+            h_source.copy(deviceLdu.source,true);
+            h_upper.copy(deviceLdu.upper,true);
+            h_lower.copy(deviceLdu.lower,true);
+
+            fvScalarMatrix TEqn
+            (
+                fvm::ddt(T) - fvm::laplacian(DT, T)
+             ==
+                fvOptions(T)
+            );
+
+            scalarField& diag = TEqn.diag();
+            scalarField& source = TEqn.source();
+            const scalarField& upper = TEqn.upper();
+            const scalarField& lower = TEqn.lower();
+
+            // forAll(T.boundaryField(), patchi)
+            // {
+            //     const fvPatch& p = T.boundaryField()[patchi].patch();
+            //     const labelList& faceCells = p.faceCells();
+             
+            //     forAll(faceCells, i)
+            //     {
+            //         diag[faceCells[i]] += TEqn.internalCoeffs()[patchi][i];       
+            //         source[faceCells[i]] += TEqn.boundaryCoeffs()[patchi][i];
+            //     }
+            // }
+
+            // for (label i = 0; i < numCells_; i++) {
+            //     scalar diff = fabs(diag[i] - h_diag[i]);
+            //     scalar diff2 = fabs(source[i] - h_source[i]);
+            //     if (diff > 1e-6) {
+            //         Logger << "diag error = OpenFOAM: diag[" << i << "] = " << diag[i] <<" -- GPU diag[" << i << "] = " << h_diag[i] << endl;
+            //     }
+            //  //     Logger << "diag error = OpenFOAM: diag[" << i << "] = " << diag[i] <<" -- GPU diag[" << i << "] = " << h_diag[i] << endl;
+            //     if (diff2 > 1e-6) {
+            //         Logger << "source error ="<<diff2<< " OpenFOAM: source[" << i << "] = " << source[i] <<" -- GPU source[" << i << "] = " << h_source[i] << endl;
+            //     }
+            // }
+
+            // for (label i = 0; i < numInternalFaces_; i++) {
+            //     scalar diff = fabs(upper[i] - h_upper[i]);
+            //     scalar diff2 = fabs(lower[i] - h_lower[i]);
+            //     if (diff > 1e-6) {
+            //         Logger << "upper error = OpenFOAM: upper[" << i << "] = " << upper[i] <<" -- GPU upper[" << i << "] = " << h_upper[i] << endl;
+            //     } 
+            //     if (diff2 > 1e-6) {
+            //         Logger << "lower error = OpenFOAM: lower[" << i << "] = " << lower[i] <<" -- GPU lower[" << i << "] = " << h_lower[i] << endl;
+            //     }
+            // }
+            // double errorSumDiag = 0.0;
+            // double errorSumSource = 0.0;
+            // double errorSumlower = 0.0;
+            // double errorSumupper = 0.0;
+            
+            // for (label i = 0; i < numCells_; i++) {
+            //     errorSumDiag += fabs(diag[i] - h_diag[i]);
+            //     errorSumSource += fabs(source[i] - h_source[i]);
+            // }
+            // for (label i = 0; i < numInternalFaces_; i++) {
+            //     errorSumlower += fabs(lower[i] - h_lower[i]);
+            //     errorSumupper += fabs(upper[i] - h_upper[i]);
+            // }
+            // double avgErrorDiag = errorSumDiag / numCells_;
+            // double avgErrorSource = errorSumSource / numCells_;
+            
+            // Logger << "Average error Diag = " << avgErrorDiag << "  -- source = "<< avgErrorSource<< endl;
+            // Logger << "Average error lower = " << errorSumlower / numInternalFaces_ << "  -- upper = "<< errorSumupper / numInternalFaces_<< endl;
+        
+
+            // // Loop over and print each diagonal entry: 
+	        // for (label i = 0; i < h_diag.size(); i++) { 
+            //     Info << "GPUFoam: diag[" << i << "] = " << h_diag[i] <<" -- source[" << i << "] = " << h_source[i] << endl; 
+            //     }
+	     
+            // for (label i = 0; i < h_upper.size(); i++) { 
+            //     Info << "GPUFoam: upper[" << i << "] = " << h_upper[i] <<" -- lower[" << i << "] = " << h_lower[i] << endl; 
+            //     }
+
+            
+            // Info<< "discKernel run is finished!"<<endl;
+
+
+           // #include "writeError.H"
+            
+            Info<< "amgx.setup " <<endl;
+
+            deviceLdu.set(deviceMesh);
+            
+            Info<< "amgx.solve " <<endl;
+            
+            deviceLdu.solve(deviceMesh,deviceT.currentField);
+            deviceT.update();
+
+            
+            h_T.copy(deviceT.currentField, true);
+
+            h_T_old.copy(deviceT.oldField.Data(), true);
+
+            // for(label i=0; i<deviceMesh.numCells; i++)
+            // {
+            //    Info << " T_new["<<i<<"] = "<<h_T[i]<< "  and T old["<<i<<"] = "<<h_T_old[i]<<endl;
+            // }
+
+            fvOptions.constrain(TEqn);
+            TEqn.solve();
+            fvOptions.correct(T);
+
+            // forAll(T, celli)
+            // {
+            //     scalar error = fabs(T[celli] - h_T[celli]);
+            //     //if(error > 1e-1)
+            //     Info<< " openFoam T[" << celli << "] = " << T[celli] << " -- GPU T[" << celli << "] = " << h_T[celli] << endl;
+            // }
+
         }
+
         
+
+        // Only pull T back from device when we are about to write
+        // if (runTime.outputTime())
+        // { 
+        //      Info<< "It's Output Time, Copying T from device to host" << endl;
+        //       h_T.copy(deviceT.currentField, true);
+
+        //      forAll(T, i)
+        //     {
+        //         T[i] = h_T[i];
+        //     }
+        //     // Optionally, fix the boundary conditions:
+        //     T.correctBoundaryConditions();
+        // }
+
+        #include "write.H"
 
         runTime.printExecutionTime(Info);
     }
-    
-    //MPI_Finalize();
+    // Clean up host memory
+    h_diag.deallocate();
+    h_source.deallocate();
+    h_upper.deallocate();
+
+
     Info<< "End\n" << endl;
 
     return 0;
 }
+
+
+// ************************************************************************* //
